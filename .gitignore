@@ -1,0 +1,27 @@
+# Virtual Environments
+.venv/
+env/
+venv/
+
+# VSCode / PyCharm
+.idea/
+.vscode/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Models / Large files (if not part of repo)
+*.h5
+*.joblib
+
+# Sensitive data
+*.env
