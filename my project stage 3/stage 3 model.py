@@ -1,6 +1,4 @@
-
-import csv
-import time
+import logging
 from config_models import config_parmas as cp
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -354,7 +352,7 @@ def test_headless_browser_firefox(url: str) -> str:
         return html
 
 
-import logging
+
 
 # Set logging level to DEBUG
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
@@ -414,46 +412,29 @@ if __name__ == "__main__":
 
 #check this functions!!!!!!!!!!!!!
 
-    # lEGIT = 1
-    # sUS = 0
-    # pHISHING = -1
-    #
-    # SUSPICIOUS_WORDS_REGEX = re.compile(
-    #     r"(log[in]?|sign[in]?|auth|user(name)?|email|phone|account|"
-    #     r"credential|password|passcode|pin|security\s*code|credit\s*card|cvv|expiry|iban|bank)",
-    #     re.IGNORECASE
-    # )
-    #
-    #
-    # def normalize_domain(url: str):
-    #     parts = extract(url)
-    #     if not (parts.domain and parts.suffix):
-    #         return ""
-    #     return f"{parts.domain}.{parts.suffix}"
-    #
-    #
-    # def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
-    #     suspicious_patterns = [
-    #         r"eval\\s*\\(",
-    #         r"new\\s+Function\\s*\\(",
-    #         r"setTimeout\\s*\\(\\s*['\"]",  # code as string
-    #         r"document\\.write\\s*\\(",
-    #         r"window\\.location",
-    #         r"innerHTML\\s*=",
-    #         r"onmouseover\\s*=",
-    #         r"onbeforeunload",
-    #         r"navigator\\.clipboard",
-    #         r"XMLHttpRequest",
-    #         r"fetch\\s*\\("
-    #     ]
-    #
-    #     score = 0
-    #     inline_scripts = soup.find_all("script", src=False)
-    #     for s in inline_scripts:
-    #         content = s.string or ""
-    #         for pattern in suspicious_patterns:
-    #             if re.search(pattern, content):
-    #                 score += 2
+
+    def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
+        suspicious_patterns = [
+            r"eval\\s*\\(",
+            r"new\\s+Function\\s*\\(",
+            r"setTimeout\\s*\\(\\s*['\"]",  # code as string
+            r"document\\.write\\s*\\(",
+            r"window\\.location",
+            r"innerHTML\\s*=",
+            r"onmouseover\\s*=",
+            r"onbeforeunload",
+            r"navigator\\.clipboard",
+            r"XMLHttpRequest",
+            r"fetch\\s*\\("
+        ]
+
+        score = 0
+        inline_scripts = soup.find_all("script", src=False)
+        for s in inline_scripts:
+            content = s.string or ""
+            for pattern in suspicious_patterns:
+                if re.search(pattern, content):
+                    score += 2
     #
     #     external_scripts = soup.find_all("script", src=True)
     #     for s in external_scripts:
