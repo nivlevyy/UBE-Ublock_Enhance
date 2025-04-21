@@ -1,0 +1,300 @@
+
+
+
+import os
+from bs4 import BeautifulSoup
+import  features_extraction.stage3_html.stage_3_model as fe
+
+def get_project_root():
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+    )
+
+PROJECT_ROOT = get_project_root()
+TEST_DOMAIN = "example.com"
+
+
+
+
+##############################################favicontest###############################################################
+HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "favicon_test")
+html_files = [
+    r"test_favicon_legit.html",              # ➜ ציון צפוי: 1
+    r"test_favicon_sus.html",                # ➜ ציון צפוי: 1
+    r"test_favicon_phish.html",              # ➜ ציון צפוי: -1
+    r"test_favicon_phish_invalid_ext.html",  # ➜ ציון צפוי: -1
+    r"test_favicon_none.html"                # ➜ ציון צפוי: 1
+]
+expected_outputs = [1, 1, -1, -1, 1]
+def run_favicon_tests():
+    results = []
+    for file in html_files:
+        path = os.path.join(HTML_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+        elements = fe.element_extraction_from_html(soup, tag="link", attribute="href")
+        result = fe.favicon_check(elements, fe.normalize_domain(TEST_DOMAIN))
+        results.append(result)
+
+    return results
+
+# if __name__ == "__main__":
+#     results = run_favicon_tests()
+#     print("🧪 Test Results:", results)
+#     print("✅ Pass Status:", [r == e for r, e in zip(results, expected_outputs)])
+
+
+
+############################################## anchor test ###############################################################
+
+ANCHOR_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "anchor_test")
+
+anchor_html_files = [
+    "test_anchor_legit.html",      # כל הקישורים פנימיים → ✅ 1
+    "test_anchor_suspicious.html", # חצי # / javascript → ⚠️ 0
+    "test_anchor_phish.html",      # רובם חיצוניים → 🔴 -1
+    "test_anchor_empty.html",      # אין בכלל <a> → ✅ 1
+    "test_anchor_mixed.html"       # אחד פנימי, אחד חיצוני, אחד # → ⚠️ 0
+]
+
+anchor_expected_outputs = [1, -1, -1, 1, -1]
+
+def run_anchor_tests():
+    results = []
+    for file in anchor_html_files:
+        path = os.path.join(ANCHOR_HTML_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+        elements = fe.element_extraction_from_html(soup, tag="a", attribute="href")
+        result = fe.extract_url_of_anchor_feature(elements, fe.normalize_domain(TEST_DOMAIN))
+        results.append(result)
+
+    return results
+
+# if __name__ == "__main__":
+#     print("\n===== 🧪 Anchor Test Results =====")
+#     anchor_results = run_anchor_tests()
+#     print("Results:", anchor_results)
+#     print("Pass:", [r == e for r, e in zip(anchor_results, anchor_expected_outputs)])
+
+
+############################################## link test ###############################################################
+
+LINKS_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "links_test")
+
+links_html_files = [
+    "test_links_legit.html",       # כל הקישורים פנימיים → ✅ 1
+    "test_links_suspicious.html",  # קישור חיצוני אחד → ⚠️ 0
+    "test_links_phish.html",       # כל הקישורים חיצוניים → 🔴 -1
+    "test_links_empty.html"        # אין בכלל לינקים → ✅ 1
+]
+
+links_expected_outputs = [1, 0, -1, 1]
+
+def run_links_tests():
+    results = []
+    for file in links_html_files:
+        path = os.path.join(LINKS_HTML_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+
+        elements = []
+        elements += fe.element_extraction_from_html(soup, tag="meta", attribute="content")
+        elements += fe.element_extraction_from_html(soup, tag="script", attribute="src")
+        elements += fe.element_extraction_from_html(soup, tag="link", attribute="href")
+
+        result = fe.link_count_in_html(elements, fe.normalize_domain(TEST_DOMAIN))
+        results.append(result)
+
+    return results
+
+# if __name__ == "__main__":
+#     print("\n===== 🧪 Links-in-Tags Test Results =====")
+#     links_results = run_links_tests()
+#     print("Results:", links_results)
+#     print("Pass:", [r == e for r, e in zip(links_results, links_expected_outputs)])
+#
+#
+
+
+############################################## request url test ###############################################################
+
+REQUEST_URL_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "request_url_test")
+request_html_files = [
+    "test_request_legit.html",     # ➜ צפוי: 1
+    "test_request_mixed.html",     # ➜ צפוי: 0
+    "test_request_phish.html",     # ➜ צפוי: -1
+    "test_request_empty.html"      # ➜ צפוי: 1
+]
+
+request_expected_outputs = [1, 1, -1, 1]
+
+def run_request_tests():
+    results = []
+    for file in request_html_files:
+        path = os.path.join(REQUEST_URL_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+
+        elements = []
+        for tag in ["img", "source", "audio", "video", "embed", "iframe"]:
+            elements += fe.element_extraction_from_html(soup, tag=tag, attribute="src")
+
+        result = fe.extract_request_url_feature(elements, fe.normalize_domain(TEST_DOMAIN))
+        results.append(result)
+
+    return results
+
+# if __name__ == "__main__":
+#     print("\n===== 🧪 Request URL Feature Test Results =====")
+#     request_results = run_request_tests()
+#     print("Results:", request_results)
+#     print("Pass:", [r == e for r, e in zip(request_results, request_expected_outputs)])
+
+############################################## sfh test ###############################################################
+
+SFH_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "sfh_test")
+sfh_html_files = [
+    "test_sfh_legit.html",
+    "test_sfh_suspicious.html",
+    "test_sfh_phish.html",
+    "test_sfh_about_blank.html",
+    "test_sfh_empty_action.html",
+    "test_sfh_multiple_forms.html",
+    "test_sfh_all_legit_forms.html",
+    "test_sfh_all_phishy_forms.html",
+    "test_sfh_no_forms.html",
+    "test_sfh_login_keywords_legit.html",
+    "test_sfh_login_keywords_suspicious.html",
+    "test_sfh_login_keywords_phish.html",
+    "test_sfh_mixed_forms.html",
+    "test_sfh_blank_action_only.html",
+    "test_sfh_keyword_only.html",
+    "test_sfh_password_only.html",
+    "test_sfh_legit_and_suspicious.html",
+    "test_sfh_keyword_password_action.html"
+]
+
+
+sfh_expected_outputs = [
+    1,   # test_sfh_legit.html
+    0,   # test_sfh_suspicious.html
+    -1,  # test_sfh_phish.html
+    0,   # test_sfh_about_blank.html
+    0,   # test_sfh_empty_action.html
+    -1,  # test_sfh_multiple_forms.html
+    1,   # test_sfh_all_legit_forms.html
+    -1,  # test_sfh_all_phishy_forms.html
+    1,   # test_sfh_no_forms.html
+    0,   # test_sfh_login_keywords_legit.html
+    -1,  # test_sfh_login_keywords_suspicious.html
+    -1,  # test_sfh_login_keywords_phish.html
+    0,   # test_sfh_mixed_forms.html
+    0,   # test_sfh_blank_action_only.html
+    0,   # test_sfh_keyword_only.html
+    0,   # test_sfh_password_only.html
+    0,   # test_sfh_legit_and_suspicious.html
+    -1   # test_sfh_keyword_password_action.html
+]
+def run_sfh_tests():
+    results = []
+    for file in sfh_html_files:
+        path = os.path.join(SFH_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+        elements = fe.element_extraction_from_html(soup, tag="form", attribute="action")
+        result = fe.extract_server_form_handler_feature(elements, fe.normalize_domain(TEST_DOMAIN))
+        results.append(result)
+    return results
+
+if __name__ == "__main__":
+    print("\n===== 🧪 SFH Extended Test Results =====")
+    sfh_results = run_sfh_tests()
+    print("Results:", sfh_results)
+    print("Pass:", [r == e for r, e in zip(sfh_results, sfh_expected_outputs)])
+
+############################################## sfh test ###############################################################
+
+IFRAME_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "iframe_test")
+
+iframe_html_files = [
+    "test_iframe_legit.html",             # ✅ iframe רגיל עם sandbox → 1
+    "test_iframe_hidden.html",            # ⚠️ iframe עם display:none → +3
+    "test_iframe_zero_size.html",         # ⚠️ iframe עם גובה ורוחב 0 → +2
+    "test_iframe_external.html",          # ⚠️ iframe לדומיין זר ברשימה  → +2
+    "test_iframe_nosandbox.html",         # ⚠️ iframe ללא sandbox → +1
+    "test_iframe_srcdoc_keywords.html",   # 🔴 srcdoc עם מילים כמו password + script → +6
+    "test_iframe_complex_phish.html",     # 🔴 צירוף של מוסתר + דומיין זר + srcdoc מסוכן → +11
+    "test_iframe_no_iframes.html",        # ✅ אין בכלל iframe → 1
+    "test_iframe_safe_srcdoc.html"        # ✅ srcdoc תמים עם טקסט רגיל → 1
+]
+
+iframe_expected_outputs = [1, 0, 0, 0, 0, -1, -1, 1, 1]
+
+def run_iframe_tests():
+    results = []
+    for file in iframe_html_files:
+        path = os.path.join(IFRAME_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+        elements = fe.element_extraction_from_html(soup, tag="iframe")
+        result = fe.extract_iframe_feature(elements, fe.normalize_domain(TEST_DOMAIN))
+        results.append(result)
+    return results
+
+# if __name__ == "__main__":
+#     print("\n===== 🧪 Iframe Feature Test Results =====")
+#     iframe_results = run_iframe_tests()
+#     print("Results:", iframe_results)
+#     print("Pass:", [r == e for r, e in zip(iframe_results, iframe_expected_outputs)])
+#
+#
+#
+#
+############################################## suspicious js behavior test ###############################################################
+
+JS_BEHAVIOR_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "JS_test")
+
+js_behavior_html_files = [
+    "test_js_legit.html",              # ✅ קוד תמים → 1
+    "test_js_eval.html",               # 🔴 eval() → -1
+    "test_js_new_function.html",       # 🔴 new Function → -1
+    "test_js_document_write.html",     # 🔴 document.write → -1
+    "test_js_onmouseover.html",        # 🔴 onmouseover → -1
+    "test_js_settimeout_string.html",  # 🔴 setTimeout with string → -1
+    "test_js_window_location.html",    # ⚠️ window.location → 0
+    "test_js_innerhtml.html",          # ⚠️ innerHTML = ... → 0
+    "test_js_clipboard_fetch.html",    # ⚠️ clipboard + fetch → 0
+    "test_js_external_script.html"     # ⚠️ script src from foreign domain → 0
+]
+
+js_behavior_expected_outputs = [1, -1, -1, -1, -1, -1, 0, 0, 0, 0]
+
+def run_js_behavior_tests():
+    results = []
+    for file in js_behavior_html_files:
+        path = os.path.join(JS_BEHAVIOR_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+        result = fe.detect_suspicious_js_behavior(soup, fe.normalize_domain(TEST_DOMAIN))
+        results.append(result)
+    return results
+
+# if __name__ == "__main__":
+#     print("\n===== 🧪 JavaScript Behavior Feature Test Results =====")
+#     js_results = run_js_behavior_tests()
+#     print("Results:", js_results)
+#     print("Pass:", [r == e for r, e in zip(js_results, js_behavior_expected_outputs)])
+#
+#
+#
+
+
+

