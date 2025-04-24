@@ -274,6 +274,8 @@ def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
             content = script.get_text().strip().lower()
         except Exception:
             content=""
+        if "oncontextmenu" in script or "event.button==2" in script or "contextmenu" in script:
+            score += 3
         for pattern in cp.get_high_risk_patterns():
             if re.search(pattern, content):
                 score += 3
@@ -285,6 +287,7 @@ def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
         for pattern in cp.get_low_risk_patterns():
             if re.search(pattern, content):
                 score += 1
+
     try:
         external_scripts = soup.find_all("script", src=True)
         for script in external_scripts:
