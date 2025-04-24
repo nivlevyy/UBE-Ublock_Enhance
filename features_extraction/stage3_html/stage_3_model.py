@@ -1,3 +1,6 @@
+from selenium.webdriver.ie.webdriver import WebDriver
+from selenium.webdriver.support.wait import WebDriverWait
+
 from features_extraction.config_models import  config_parmas as cp
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -78,7 +81,6 @@ def favicon_check(link_tag:list, base_domain:str) -> int:
 
     return lEGIT
 
-
 def extract_url_of_anchor_feature(a_list : list,base_domain) -> int:
 
     total = int(len(a_list))
@@ -107,7 +109,6 @@ def extract_url_of_anchor_feature(a_list : list,base_domain) -> int:
         return sUS  # suspicious
     else:
         return lEGIT
-
 
 def link_count_in_html(total_link_list:list,base_domain:str) -> int:
     total = len(total_link_list)
@@ -173,7 +174,6 @@ def extract_request_url_feature(elements: list, base_domain: str) -> int:
     else:
         return lEGIT  # legitimate
 
-
 def extract_server_form_handler_feature(form_list: list, base_domain: str) -> int:
     total_score = 0
     for form in form_list:
@@ -203,7 +203,6 @@ def extract_server_form_handler_feature(form_list: list, base_domain: str) -> in
         return sUS
     return lEGIT
 
-
 def extract_iframe_feature(iframe_list: list, base_domain: str) -> int:
     if not iframe_list:
         return lEGIT
@@ -222,7 +221,7 @@ def extract_iframe_feature(iframe_list: list, base_domain: str) -> int:
 
             is_external = iframe_domain and iframe_domain != base_domain
 
-            # דילוג על פרסומות לא רלוונטיות
+
             if any(x in src for x in ["ads", "analytics", "pixel", "tracker", "doubleclick"]):
                 continue
 
@@ -259,8 +258,6 @@ def extract_iframe_feature(iframe_list: list, base_domain: str) -> int:
 
     except Exception as e:
         return sUS
-
-
 
 ### need to improve this function-js behavior#####!!!!!!!!!!!!!
 
@@ -307,11 +304,8 @@ def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
         return sUS
 
 
-
 def nlp_based_phishing_text_check(soup: BeautifulSoup) -> int:
-    """
-    Check if the HTML text contains a suspiciously high amount of phishing-related words.
-    """
+
     text = soup.get_text(strip=True).lower()
 
     matches = SUSPICIOUS_WORDS_REGEX.findall(text)
@@ -330,7 +324,7 @@ def nlp_based_phishing_text_check(soup: BeautifulSoup) -> int:
         return lEGIT
 
 
-
+    
 def safe_extract(tag, attribute):
     try:
         return tag.get(attribute,"").strip()
@@ -377,12 +371,10 @@ def test_headless_browser_firefox(url: str):
         ffx_options.add_argument("--headless")
         driver = webdriver.Firefox(options=ffx_options)
         try:
-            driver.get(url)
-            time.sleep(3)
+            #driver.get(url)
+          #  WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            print( driver.page_source)
             html = driver.page_source
-        except Exception as e:
-            print(f"[ERROR] {url} → {e}")
-            html = ""
         finally:
             driver.quit()
         return html
@@ -441,9 +433,9 @@ def extract_stage3_features_debug(input_csv_path, output_csv_path):
 if __name__ == "__main__":
     input_csv_path = "/content/alive_urls.csv"
     output_csv_path = "/content/stage3_debug_output.csv"
-
+    test_headless_browser_firefox("www.ynet.co.il")
     # Now call the debug function you defined earlier
-    #extract_stage3_features_debug(input_csv_path, output_csv_path)
+  #  extract_stage3_features_debug(input_csv_path, output_csv_path)
 
 
 
@@ -452,8 +444,19 @@ if __name__ == "__main__":
 
 
 #check this functions!!!!!!!!!!!!!
-
-
+#need to find out what needed from here read about it more !
+# def detect_dynamic_script_injection(driver: webdriver) -> int:
+#     try:
+#         injected_scripts = driver.execute_script("""
+#             return [...document.scripts].filter(s => s.src || s.innerText.length > 0).length;
+#         """)
+#         if injected_scripts > 10:
+#             return pHISHING
+#         elif injected_scripts > 5:
+#             return sUS
+#         return lEGIT
+#     except Exception:
+#         return sUS
     # def analyze_textual_tags(soup: BeautifulSoup) -> int:
     #     tags = soup.find_all(["meta", "script"])
     #     text = " ".join(t.get("content", "") + (t.string or "") for t in tags if t)
