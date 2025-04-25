@@ -274,7 +274,7 @@ def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
             content = script.get_text().strip().lower()
         except Exception:
             content=""
-        if "oncontextmenu" in script or "event.button==2" in script or "contextmenu" in script:
+        if "oncontextmenu" in script or re.search("event\s*\.\s*button\s*==\s*2", script) or "contextmenu" in script:
             score += 3
         for pattern in cp.get_high_risk_patterns():
             if re.search(pattern, content):
