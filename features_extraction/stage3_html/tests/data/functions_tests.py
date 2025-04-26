@@ -12,8 +12,6 @@ PROJECT_ROOT = get_project_root()
 
 
 
-
-
 FAVICON_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "favicon_test")
 ANCHOR_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "anchor_test")
 LINKS_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "links_test")
@@ -21,6 +19,13 @@ REQUEST_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "
 SFH_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "sfh_test")
 IFRAME_DIR=os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "iframe_test")
 JS_DIR=os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "JS_test")
+RIGHT_CLICK_TEST_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "right_click_test")
+ONMOUSEOVER_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "onmouseover_test")
+ANALYZE_TEXT_TAGS_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "analyze_textual_tags_test")
+
+
+
+
 
 
 
@@ -448,12 +453,105 @@ js_behavior_test_cases = {
 </head><body></body></html>
 """
 }
+right_click_html_cases = {
+    "test_right_click_legit.html":"""
+    <html><body>
+    <h1>
+    Legit page
+    </h1>
+    </body></html>""",
+    "test_right_click_oncontextmenu.html":"""
+    <html><body oncontextmenu="return false;">
+    <h1>Blocked right click</h1>
+    </body></html>
+""",
+    "test_right_click_script_block.html":"""<html><body>
+<script>
+document.oncontextmenu = function() { return false; }
+</script>
+<h1>Blocked by script</h1>
+</body></html>
+"""
+}
+onmouseover_test_cases = {
+    "test_onmouseover_legit.html": """
+<!DOCTYPE html>
+<html>
+<head><title>Legit No Mouseover</title></head>
+<body>
+    <h1>No onmouseover here</h1>
+</body>
+</html>
+""",
+    "test_onmouseover_in_tag.html": """
+<!DOCTYPE html>
+<html>
+<head><title>Mouseover in Tag</title></head>
+<body>
+    <a href="#" onmouseover="alert('Phish!')">Hover me</a>
+</body>
+</html>
+""",
+    "test_onmouseover_in_script.html": """
+<!DOCTYPE html>
+<html>
+<head><title>Mouseover in Script</title></head>
+<body>
+    <script>
+        document.getElementById('target').onmouseover = function() { stealCookies(); };
+    </script>
+    <h1 id="target">Hover Target</h1>
+</body>
+</html>
+"""
+}
+analyze_textual_tags_test_cases = {
+    "test_analyze_text_legit.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta content="Welcome to our amazing website, have fun!">
+    <script>console.log("Safe content here");</script>
+</head>
+<body>
+    <h1>Legitimate Content</h1>
+</body>
+</html>
+""",
+    "test_analyze_text_suspicious.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta content="Login required to access your user account.">
+    <script>console.log("Authentication needed");</script>
+</head>
+<body>
+    <h1>Authentication Page</h1>
+</body>
+</html>
+""",
+    "test_analyze_text_phishing.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta content="Enter your password, credit card and security code immediately.">
+    <script>
+        var scam = "Bank login information required urgently.";
+    </script>
+</head>
+<body>
+    <h1>Bank Security Alert</h1>
+</body>
+</html>
+"""
+}
+
 
 
 if __name__ == "__main__":
-        os.makedirs(SFH_DIR, exist_ok=True)
-        for filename, content in sfh_test_cases.items():
-            path = os.path.join(SFH_DIR, filename)
+        os.makedirs(ANALYZE_TEXT_TAGS_HTML_DIR, exist_ok=True)
+        for filename, content in analyze_textual_tags_test_cases.items():
+            path = os.path.join(ANALYZE_TEXT_TAGS_HTML_DIR, filename)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(content.strip())
 

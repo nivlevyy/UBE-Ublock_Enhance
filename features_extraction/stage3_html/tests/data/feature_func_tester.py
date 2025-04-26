@@ -212,11 +212,11 @@ def run_sfh_tests():
         results.append(result)
     return results
 
-if __name__ == "__main__":
-    print("\n===== 🧪 SFH Extended Test Results =====")
-    sfh_results = run_sfh_tests()
-    print("Results:", sfh_results)
-    print("Pass:", [r == e for r, e in zip(sfh_results, sfh_expected_outputs)])
+# if __name__ == "__main__":
+#     print("\n===== 🧪 SFH Extended Test Results =====")
+#     sfh_results = run_sfh_tests()
+#     print("Results:", sfh_results)
+#     print("Pass:", [r == e for r, e in zip(sfh_results, sfh_expected_outputs)])
 
 ############################################## sfh test ###############################################################
 
@@ -293,8 +293,93 @@ def run_js_behavior_tests():
 #     print("Results:", js_results)
 #     print("Pass:", [r == e for r, e in zip(js_results, js_behavior_expected_outputs)])
 #
+########################################
+# Detect Right Click Block Test Cases  #
+########################################
+
+RIGHT_CLICK_TEST_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "right_click_test")
+
+right_click_html_files = [
+    "test_right_click_legit.html",    # אין חסימה ➔ צפוי: 1
+    "test_right_click_oncontextmenu.html",  # יש חסימה דרך oncontextmenu ➔ צפוי: -1
+    "test_right_click_script_block.html"    # יש חסימה דרך script ➔ צפוי: -1
+]
+
+right_click_expected_outputs = [1, -1, -1]
+
+def run_right_click_tests():
+    results = []
+    for file in right_click_html_files:
+        path = os.path.join(RIGHT_CLICK_TEST_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+        result = fe.detect_right_click_block(soup)
+        results.append(result)
+    return results
+
+# if __name__ == "__main__":
+#     results = run_right_click_tests()
+#     print("Results:", results)
+#     print("Pass:", [r == e for r, e in zip(results, right_click_expected_outputs)])
 #
+
+##############################################
+# Detect OnMouseOver Feature Test Cases      #
+##############################################
+
+ONMOUSEOVER_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "onmouseover_test")
+
+onmouseover_html_files = [
+    "test_onmouseover_legit.html",          # אין onmouseover ➔ צפוי: 1
+    "test_onmouseover_in_tag.html",          # onmouseover ישיר ➔ צפוי: -1
+    "test_onmouseover_in_script.html"        # onmouseover ב־script ➔ צפוי: -1
+]
+
+onmouseover_expected_outputs = [1, -1, -1]
+
+def run_onmouseover_tests():
+    results = []
+    for file in onmouseover_html_files:
+        path = os.path.join(ONMOUSEOVER_HTML_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+        result = fe.detect_onmouseover_in_dom(soup)
+        results.append(result)
+    return results
 #
+# if __name__ == "__main__":
+#     results = run_onmouseover_tests()
+#     print("Results:", results)
+#     print("Pass:", [r == e for r, e in zip(results, onmouseover_expected_outputs)])
 
+##############################################
+# Analyze Textual Tags Feature Test Cases    #
+##############################################
 
+ANALYZE_TEXT_TAGS_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "analyze_textual_tags_test")
 
+analyze_textual_tags_html_files = [
+    "test_analyze_text_legit.html",         # טקסט תמים ➔ צפוי: 1
+    "test_analyze_text_suspicious.html",     # טקסט עם מילות פישינג בודדות ➔ צפוי: 0
+    "test_analyze_text_phishing.html"        # טקסט פישינג מלא ➔ צפוי: -1
+]
+
+analyze_textual_tags_expected_outputs = [1, 0, -1]
+
+def run_analyze_textual_tags_tests():
+    results = []
+    for file in analyze_textual_tags_html_files:
+        path = os.path.join(ANALYZE_TEXT_TAGS_HTML_DIR, file)
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "html.parser")
+        result = fe.analyze_textual_tags(soup)
+        results.append(result)
+    return results
+
+if __name__ == "__main__":
+    results = run_analyze_textual_tags_tests()
+    print("Results:", results)
+    print("Pass:", [r == e for r, e in zip(results, analyze_textual_tags_expected_outputs)])
