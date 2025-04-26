@@ -4,6 +4,22 @@
 import os
 from bs4 import BeautifulSoup
 import  features_extraction.stage3_html.stage_3_model as fe
+from selenium.webdriver.firefox.options import Options
+
+from features_extraction.config_models import  config_parmas as cp
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
+from tldextract import extract
+import re
+import pandas as pd
+import time
+def normalize_domain(url:str):
+    parts_of_url = extract(url)
+    if not (parts_of_url.domain and parts_of_url.suffix):
+        return None
+    domain=f"{parts_of_url.domain}.{parts_of_url.suffix}"
+    return domain
 
 def get_project_root():
     return os.path.abspath(
@@ -378,8 +394,83 @@ def run_analyze_textual_tags_tests():
         result = fe.analyze_textual_tags(soup)
         results.append(result)
     return results
+#
+# if __name__ == "__main__":
+#     results = run_analyze_textual_tags_tests()
+#     print("Results:", results)
+#     print("Pass:", [r == e for r, e in zip(results, analyze_textual_tags_expected_outputs)])
+
+
+
+##############################################
+# Detect Dynamic Script Injection Test Cases #
+##############################################
+
+DYNAMIC_SCRIPT_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "dynamic_script_test")
+
+dynamic_script_html_files = [
+    "test_dynamic_script_legit.html",         # פחות מ־5 ➔ LEGIT (1)
+    "test_dynamic_script_suspicious.html",     # 6-9 ➔ SUSPICIOUS (0)
+    "test_dynamic_script_phishing.html"        # מעל 10 ➔ PHISHING (-1)
+]
+
+dynamic_script_expected_outputs = [1, 0, -1]
+
+def run_dynamic_script_injection_tests():
+    results = []
+    ffx_options = Options()
+    ffx_options.add_argument("--headless")
+    driver = webdriver.Firefox(options=ffx_options)
+
+    try:
+        for file in dynamic_script_html_files:
+            path = os.path.join(DYNAMIC_SCRIPT_HTML_DIR, file)
+            driver.get(f"file://{path}")  # טוען קובץ לוקאלי
+            result = fe.detect_dynamic_script_injection(driver)
+            results.append(result)
+    finally:
+        driver.quit()
+    return results
+
+# if __name__ == "__main__":
+#     results = run_dynamic_script_injection_tests()
+#     print("Results:", results)
+#     print("Pass:", [r == e for r, e in zip(results, dynamic_script_expected_outputs)])
+
+
+
+
+##############################################
+# Detect Auto Redirect Feature Test Cases    #
+##############################################
+
+AUTOREDIRECT_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "autoredirect_test")
+
+autoredirect_html_files = [
+    "test_redirect_legit.html",         # אין הפניה ➔ LEGIT (1)
+    "test_redirect_phish.html"           # יש הפניה ➔ PHISHING (-1)
+]
+
+autoredirect_expected_outputs = [1, -1]
+
+def run_autoredirect_tests():
+    results = []
+    ffx_options = Options()
+    ffx_options.add_argument("--headless")
+    driver = webdriver.Firefox(options=ffx_options)
+
+    try:
+        for file in autoredirect_html_files:
+            path = os.path.join(AUTOREDIRECT_HTML_DIR, file)
+            driver.get(f"file://{path}")  # טוען את קובץ ה־HTML מהמערכת
+            base_domain = normalize_domain(f"file://{path}")  # במקרה הזה הדומיין יהיה 'file'
+            result = fe.detect_autoredirect(driver, base_domain)
+            results.append(result)
+    finally:
+        driver.quit()
+    return results
 
 if __name__ == "__main__":
-    results = run_analyze_textual_tags_tests()
+    results = run_autoredirect_tests()
     print("Results:", results)
-    print("Pass:", [r == e for r, e in zip(results, analyze_textual_tags_expected_outputs)])
+    print("Pass:", [r == e for r, e in zip(results, autoredirect_expected_outputs)])

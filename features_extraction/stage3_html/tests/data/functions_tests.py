@@ -22,6 +22,8 @@ JS_DIR=os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests",
 RIGHT_CLICK_TEST_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "right_click_test")
 ONMOUSEOVER_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "onmouseover_test")
 ANALYZE_TEXT_TAGS_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "analyze_textual_tags_test")
+DYNAMIC_SCRIPT_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "dynamic_script_test")
+AUTOREDIRECT_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "autoredirect_test")
 
 
 
@@ -545,13 +547,86 @@ analyze_textual_tags_test_cases = {
 </html>
 """
 }
+dynamic_script_test_cases = {
+    "test_dynamic_script_legit.html": """
+<!DOCTYPE html>
+<html>
+<head>
+<script>console.log("Script 1");</script>
+<script>console.log("Script 2");</script>
+</head>
+<body>
+<h1>Legitimate Page</h1>
+</body>
+</html>
+""",
+    "test_dynamic_script_suspicious.html": """
+<!DOCTYPE html>
+<html>
+<head>
+<script>console.log("Script 1");</script>
+<script>console.log("Script 2");</script>
+<script>console.log("Script 3");</script>
+<script>console.log("Script 4");</script>
+<script>console.log("Script 5");</script>
+<script>console.log("Script 6");</script>
+</head>
+<body>
+<h1>Suspicious Page</h1>
+</body>
+</html>
+""",
+    "test_dynamic_script_phishing.html": """
+<!DOCTYPE html>
+<html>
+<head>
+""" +
+"\n".join(f"<script>console.log('Script {i}');</script>" for i in range(1, 13)) +
+"""
+</head>
+<body>
+<h1>Phishing Page</h1>
+</body>
+</html>
+"""
+}
+autoredirect_test_cases = {
+    "test_redirect_legit.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>No Redirect Page</title>
+</head>
+<body>
+    <h1>Welcome to Legit Site</h1>
+</body>
+</html>
+""",
+    "test_redirect_phish.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="refresh" content="0; URL='https://phishing-site.bad'"/>
+</head>
+<body>
+    <h1>Redirecting...</h1>
+</body>
+</html>
+"""
+}
+
+
+
+
+
+
 
 
 
 if __name__ == "__main__":
-        os.makedirs(ANALYZE_TEXT_TAGS_HTML_DIR, exist_ok=True)
-        for filename, content in analyze_textual_tags_test_cases.items():
-            path = os.path.join(ANALYZE_TEXT_TAGS_HTML_DIR, filename)
+        os.makedirs(AUTOREDIRECT_HTML_DIR, exist_ok=True)
+        for filename, content in autoredirect_test_cases.items():
+            path = os.path.join(AUTOREDIRECT_HTML_DIR, filename)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(content.strip())
 
