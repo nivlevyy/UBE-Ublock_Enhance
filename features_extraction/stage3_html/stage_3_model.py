@@ -1,15 +1,12 @@
-from selenium.webdriver.ie.webdriver import WebDriver
-from selenium.webdriver.support.wait import WebDriverWait
 
 from features_extraction.config_models import  config_parmas as cp
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-import time
 from tldextract import extract
 import re
 import pandas as pd
-
+import time
 SUSPICIOUS_WORDS_REGEX = re.compile(
     r"(log[\s\-]?in|sign[\s\-]?in|auth|user(name)?|email|phone|account|"
     r"credential|password|passcode|pin|security[\s\-]?code|credit[\s\-]?card|cvv|expiry|iban|bank)",
@@ -44,7 +41,6 @@ def normalize_domain(url:str):
 def favicon_check(link_tag:list, base_domain:str) -> int:
 
     icon_links = []
-
     #filter only link tags related to favicon
     for link in link_tag:
         rel = link.get("rel", []) #return all relations to the page (rel="something) is in the element <link>)
@@ -179,7 +175,7 @@ def extract_server_form_handler_feature(form_list: list, base_domain: str) -> in
     for form in form_list:
         form_score = 0
         action = safe_extract(form, "action")
-        if not action or action.lower() in ["about:blank", "#"]:
+        if not action or action.lower() in ["about:blank", "#",""]:
             form_score += 2
         else:
             action_domain = normalize_domain(action)
@@ -274,8 +270,7 @@ def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
             content = script.get_text().strip().lower()
         except Exception:
             content=""
-        if "oncontextmenu" in script or re.search("event\s*\.\s*button\s*==\s*2", script) or "contextmenu" in script:
-            score += 3
+
         for pattern in cp.get_high_risk_patterns():
             if re.search(pattern, content):
                 score += 3
@@ -327,7 +322,115 @@ def nlp_based_phishing_text_check(soup: BeautifulSoup) -> int:
         return lEGIT
 
 
-    
+############ adding this function to the find html function didnt do it yet !!!!!!!!!!!!!!!!
+def analyze_textual_tags(soup: BeautifulSoup) -> int:
+    try:
+        tags = soup.find_all(["meta", "script"])
+        text = " ".join(
+            (t.get("content", "") or "") + " " + (t.string or "") for t in tags if t
+        )
+        matches = SUSPICIOUS_WORDS_REGEX.findall(text.lower())
+        ratio = len(matches) / max(1, len(text.split()))
+        if ratio > 0.03:
+            return pHISHING
+        elif ratio > 0.01:
+            return sUS
+        return lEGIT
+    except Exception:
+        return sUS
+
+############ adding this function to the find html function didnt do it yet !!!!!!!!!!!!!!!!
+def detect_dynamic_script_injection(driver: webdriver) -> int:
+    try:
+        injected_scripts = driver.execute_script("""
+            return [...document.scripts].filter(s => s.src || s.innerText.length > 0).length;
+        """)
+        if injected_scripts > 10:
+            return pHISHING
+        elif injected_scripts > 5:
+            return sUS
+        return lEGIT
+    except Exception:
+        return sUS
+
+############## after all html was loaded
+from selenium.webdriver.support.ui import WebDriverWait
+
+def detect_autoredirect(driver: webdriver, base_domain: str, timeout: float = 3.0) -> int:
+    try:
+        WebDriverWait(driver, timeout).until(lambda d: d.execute_script("return document.readyState") == "complete")
+        final_url = driver.current_url
+        if not final_url:
+            return sUS
+
+        if normalize_domain(final_url) != base_domain:
+            return pHISHING
+
+        return lEGIT
+
+    except Exception:
+        return sUS
+
+def check_login_form_visibility(driver: webdriver) -> int:
+    try:
+        script = """
+        var forms = document.getElementsByTagName('form');
+        for (var i = 0; i < forms.length; i++) {
+            var style = window.getComputedStyle(forms[i]);
+            if (style.display === 'none' || style.visibility === 'hidden' ||
+                forms[i].offsetWidth === 0 || forms[i].offsetHeight === 0) {
+                return true;
+            }
+        }
+        return false;
+        """
+        hidden = driver.execute_script(script)
+        return pHISHING if hidden else lEGIT
+    except Exception:
+        return sUS
+
+
+def detect_onmouseover_in_dom(soup: BeautifulSoup) -> int:
+    try:
+        tags_with_onmouseover = soup.find_all(attrs={"onmouseover": True})
+
+        inline_scripts = soup.find_all("script", src=False)
+        suspicious_script = any("onmouseover" in (script.string or "").lower() for script in inline_scripts)
+
+        if tags_with_onmouseover or suspicious_script:
+            return pHISHING
+        else:
+            return lEGIT
+    except Exception:
+        return sUS
+
+
+
+def detect_right_click_block(soup: BeautifulSoup) -> int:
+    try:
+        contextmenu_tags = soup.find_all(attrs={"oncontextmenu": True})
+        inline_scripts = soup.find_all("script", src=False)
+        suspicious_script = False
+        for script in inline_scripts:
+            content = (script.string or "").lower()
+
+            if not content:
+                continue
+
+            if re.search(r"event\s*\.\s*button\s*==\s*2", content) or "contextmenu" in content:
+                suspicious_script = True
+                break
+
+        if contextmenu_tags or suspicious_script:
+            return pHISHING
+        else:
+            return lEGIT
+
+    except Exception:
+        return sUS
+
+
+
 def safe_extract(tag, attribute):
     try:
         return tag.get(attribute,"").strip()
