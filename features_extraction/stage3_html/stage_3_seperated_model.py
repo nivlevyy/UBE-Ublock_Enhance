@@ -1,10 +1,5 @@
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-
-
 from typing import Tuple
-
 from features_extraction.config_models import  config_parmas as cp
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -12,8 +7,18 @@ from selenium.webdriver.firefox.options import Options
 from tldextract import extract
 import re
 import pandas as pd
+import os
 import time
-from features_extraction.stage1_url.feature_calculators import has_suspicious_chars
+import logging
+
+
+
+def get_project_root():
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..")
+    )
+
+
 
 SUSPICIOUS_WORDS_REGEX = re.compile(
     r"(log[\s\-]?in|sign[\s\-]?in|auth|user(name)?|email|phone|account|"
@@ -51,8 +56,14 @@ def normalize_domain(url:str):
     return domain
 ''' specific  function: check the html element that competable with each tag that indicates for a phishing site '''
 
-def has_icon_fun(icon_links:list)->bool:
-    return len(icon_links) > 0
+
+
+
+#####################1-favicon#############################
+
+def has_icon_func(icon_links:list)->int:
+    has_icon= 1 if len(icon_links) > 0 else 0
+    return has_icon
 
 # <link> tag ,attr - href=
 def favicon_check(link_tag:list, base_domain:str) -> Tuple[int, int, int]:
@@ -66,7 +77,7 @@ def favicon_check(link_tag:list, base_domain:str) -> Tuple[int, int, int]:
         rel = link.get("rel", []) #return all relations to the page (rel="something) is in the element <link>)
         if any("icon" in r.lower() for r in rel):
             icon_links.append(link)
-    has_icon = has_icon_fun(icon_links)
+    has_icon = has_icon_func(icon_links)
 
     for link in icon_links:
         href = link["href"]
@@ -88,6 +99,8 @@ def favicon_check(link_tag:list, base_domain:str) -> Tuple[int, int, int]:
 
     return has_icon,favicon_domain_not_the_same,favicon_endwith
 
+
+#####################2-anchor#############################
 # <a> tag ,attr - href=
 
 def extract_url_of_anchor_feature(a_list : list,base_domain) -> Tuple[int, int, int]:
@@ -112,11 +125,14 @@ def extract_url_of_anchor_feature(a_list : list,base_domain) -> Tuple[int, int, 
 
     return anchor_tags_count,anchor_empty_href_count,anchor_domain_not_the_same
 
+
+#####################3-link_count#############################
 # <script> attr-> src =,<meta> attr - content,<links> tag ,attr - href=
 #here i divided the big function into 4 smaller ones for each component
 def count_external_script_src(script_list:list, base_domain: str)->tuple:
     external_script_count=0
     sus_words_in_script=0
+
     for tag in script_list:
         value=safe_extract(tag, "src")
         if not value:
@@ -129,7 +145,9 @@ def count_external_script_src(script_list:list, base_domain: str)->tuple:
         text = " ".join((tag.string or ""))
         if not text:
             continue
-        sus_words_in_script += SUSPICIOUS_WORDS_REGEX.findall(text.lower())
+        matches = SUSPICIOUS_WORDS_REGEX.findall(text.lower())
+        sus_words_in_script +=len(matches)
+
     return external_script_count , sus_words_in_script
 
 def count_external_meta_content(meta_list: list, base_domain: str) -> tuple:
@@ -147,8 +165,8 @@ def count_external_meta_content(meta_list: list, base_domain: str) -> tuple:
         text = " ".join(value)
         if not text:
             continue
-        sus_words_in_meta += SUSPICIOUS_WORDS_REGEX.findall(text.lower())
-
+        matches = SUSPICIOUS_WORDS_REGEX.findall(text.lower())
+        sus_words_in_meta += len(matches)
     return external_meta_count,sus_words_in_meta
 
 
@@ -171,6 +189,8 @@ def link_count_in_html(extern_links:int,extern_meta:int,extern_script:int) -> in
     total_extern_links=extern_links +extern_meta +extern_script
     return total_extern_links
 
+
+#####################4-request_url#############################
 # tags--->    < img,source,audio,video,embed,iframe >, attr-> src
 
 def extract_request_url_feature(resources_elements_list: list, base_domain: str) -> Tuple[int, int]:
@@ -189,6 +209,8 @@ def extract_request_url_feature(resources_elements_list: list, base_domain: str)
 
     return total_resources, external_count
 
+
+#####################5-sfh#############################
 # <form> tag ,attr - action/nothing=
 
 def extract_sfh_feature(form_list: list, base_domain: str) -> tuple:
@@ -217,6 +239,7 @@ def extract_sfh_feature(form_list: list, base_domain: str) -> tuple:
 
     return  sfh_count,sfh_action_is_blank,sfh_domain_not_the_same,password_in_sfh,has_suspicious_words
 
+#####################6-iframe#############################
 # <iframe> tag ,attr - src/srcdoc=
 
 def extract_iframe_feature_src(frame_src_list: list, base_domain: str) -> tuple:
@@ -282,68 +305,26 @@ def extract_iframe_feature_srcdoc(iframe_list: list, base_domain: str) -> tuple:
 
         return iframe_srcdoc_count,  iframe_src_doc_hidden,   iframe_srcdoc_js_existence , iframe_srcdoc_sus_words
     except Exception as e:
-        return 0,0,0,0
+        return iframe_srcdoc_count,  iframe_src_doc_hidden,   iframe_srcdoc_js_existence , iframe_srcdoc_sus_words
 
 def total_iframe_src_n_doc(src_count:int,srcdoc_count:int)->int:
     return src_count+srcdoc_count
 
+#####################7-suspicious_js#############################
 
-##### to stage 3 full loaded html
-##### add this function!!!!!!!!!!!!!!!!!!!!!!!
-def detect_dynamic_script_injection(driver: webdriver) -> int:
-    injected_scripts=0
-    try:
-        injected_scripts = driver.execute_script("""return [...document.scripts].filter(s => s.src || s.innerText.length > 0).length;""")
-        return len(injected_scripts)
-    except Exception:
-        return injected_scripts
-
-def detect_autoredirect(driver: webdriver, base_domain: str, timeout: float = 3.0) -> int:
-    try:
-        WebDriverWait(driver, timeout).until(lambda d: d.execute_script("return document.readyState") == "complete")
-        final_url = driver.current_url
-        if not final_url:
-            return sUS
-
-        if normalize_domain(final_url) != base_domain:
-            return pHISHING
-
-        return lEGIT
-
-    except Exception:
-        return sUS
-
-######relevant for both !!!!!!!! initial html and latest on
-def detect_onmouseover_in_dom(soup: BeautifulSoup) -> int:
-    try:
-        tags_with_onmouseover = soup.find_all(attrs={"onmouseover": True})
-
-        inline_scripts = soup.find_all("script", src=False)
-        suspicious_script = any("onmouseover" in (script.string or "").lower() for script in inline_scripts)
-
-        if tags_with_onmouseover or suspicious_script:
-            return pHISHING
-        else:
-            return lEGIT
-    except Exception:
-        return sUS
-
-
-
-
-
-
-
-
-### need to improve this function-js behavior#####!!!!!!!!!!!!!
-
-def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
+def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> tuple:
     score = 0
+    inline_scripts_count=0
+    high_risk_patterns_count=0
+    medium_risk_patterns_count=0
+    low_risk_patterns_count=0
+    sus_js_domain_not_the_same=0
 
     try:
         inline_scripts = soup.find_all("script", src=False)
     except Exception:
-        return sUS
+        return inline_scripts_count,high_risk_patterns_count,medium_risk_patterns_count,low_risk_patterns_count,sus_js_domain_not_the_same
+    inline_scripts_count=len(inline_scripts)
 
     for script in inline_scripts:
         try:
@@ -353,15 +334,15 @@ def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
 
         for pattern in cp.get_high_risk_patterns():
             if re.search(pattern, content):
-                score += 3
+                high_risk_patterns_count += 1
 
         for pattern in cp.get_medium_risk_patterns():
             if re.search(pattern, content):
-                score += 2
+                medium_risk_patterns_count += 1
 
         for pattern in cp.get_low_risk_patterns():
             if re.search(pattern, content):
-                score += 1
+                low_risk_patterns_count += 1
 
     try:
         external_scripts = soup.find_all("script", src=True)
@@ -369,19 +350,83 @@ def detect_suspicious_js_behavior(soup: BeautifulSoup, base_domain: str) -> int:
             src = safe_extract(script, "src")
             domain = normalize_domain(src)
             if domain and domain != base_domain and domain not in cp.get_known_safe_script_hosts():
-                score += 1
+                sus_js_domain_not_the_same += 1
 
-        if score >= cp.stage_3_config_dict["js_upper_tresh"]:
-            return pHISHING
-        elif score >= cp.stage_3_config_dict["js_lower_tresh"]:
-            return sUS
-        else:
-            return lEGIT
+        return inline_scripts_count,    high_risk_patterns_count,    medium_risk_patterns_count,    low_risk_patterns_count,   sus_js_domain_not_the_same
 
     except Exception:
+        return inline_scripts_count,    high_risk_patterns_count,    medium_risk_patterns_count,    low_risk_patterns_count,   sus_js_domain_not_the_same
+
+
+#####################8-nlp#############################
+
+def nlp_based_phishing_text_check(soup: BeautifulSoup) -> int:
+    text = soup.get_text(strip=True).lower()
+
+    matches = SUSPICIOUS_WORDS_REGEX.findall(text)
+
+    return len(matches)
+
+
+#####################9-analyze_textual_tags#############################
+
+def analyze_textual_tags(count_script:int,count_meta:int) -> int:
+    return count_script + count_meta
+
+
+##### to stage 3 full loaded html
+####################10-dynamic_script#############################
+def detect_dynamic_script_injection(driver: webdriver) -> int:
+    try:
+        injected_scripts = driver.execute_script("""
+            return [...document.scripts].filter(s => s.src || s.innerText.length > 0).length;
+        """)
+        return injected_scripts
+    except Exception as e:
         return sUS
 
+#####################11-auto_redirect#############################
+############## after all html was loaded
+# this function is blocking because the waiting for full upload of the page ,
+def detect_auto_redirect(driver: webdriver, base_domain: str, timeout: float = 3.0) ->tuple:
+    meta_equiv=0
+    window_or_replace_redirect=0
+    autoredirect_different_domain=0
+    try:
+        WebDriverWait(driver, timeout).until(
+            lambda d: d.execute_script("return document.readyState") == "complete"
+        )
+
+        page_source = driver.page_source.lower()
+    except Exception:
+        return meta_equiv,  window_or_replace_redirect, autoredirect_different_domain
+    try:
+
+        if re.search(r'<meta\s+http-equiv\s*=\s*["\']?refresh["\']?', page_source, re.IGNORECASE):
+            meta_equiv=1
+    except Exception:
+        pass
+    try:
+        if re.search(r'(window\.)?location\.(href|replace)', page_source):
+            window_or_replace_redirect=1
+    except Exception:
+        pass
+    try:
+        final_url = driver.current_url
+
+        if normalize_domain(final_url) != base_domain:
+            autoredirect_different_domain=1
+
+    except Exception:
+        pass
+
+    return meta_equiv, window_or_replace_redirect, autoredirect_different_domain
+
+
+
+#####################12-login_form_visibility#############################
 def check_login_form_visibility(driver: webdriver) -> int:
+    hidden=0
     try:
         script = """
         var forms = document.getElementsByTagName('form');
@@ -395,59 +440,230 @@ def check_login_form_visibility(driver: webdriver) -> int:
         return false;
         """
         hidden = driver.execute_script(script)
-        return pHISHING if hidden else lEGIT
     except Exception:
-        return sUS
+        pass
+    return int(hidden)
 
-def nlp_based_phishing_text_check(soup: BeautifulSoup) -> int:
-    text = soup.get_text(strip=True).lower()
+#####################13-onmouseover#############################
+def detect_onmouseover_in_dom(soup: BeautifulSoup) -> tuple:
+    tags_with_onmouseover_count=0
+    suspicious_script_detected=0
+    try:
+        tags_with_onmouseover = soup.find_all(attrs={"onmouseover": True})
+        tags_with_onmouseover_count=  len(tags_with_onmouseover)
+        inline_scripts = soup.find_all("script", src=False)
+        suspicious_script_detected = sum(1 for script in inline_scripts if "onmouseover" in (script.string or "").lower())
+    except Exception:
+        pass
 
-    matches = SUSPICIOUS_WORDS_REGEX.findall(text)
+    return suspicious_script_detected,tags_with_onmouseover_count
 
-    if not matches:
-        return lEGIT
+#####################14-right_click_block#############################
+### when checking in browser return to original function because it is very sus
+def detect_right_click_block(soup: BeautifulSoup) -> tuple:
 
-    total_words = len(text.split())
-    match_ratio = len(matches) / total_words if total_words > 0 else 0
+    suspicious_script_count=0
+    contextmenu_tags_count=0
+    try:
+        contextmenu_tags = soup.find_all(attrs={"oncontextmenu": True})
+        contextmenu_tags_count=len(contextmenu_tags)
+    except Exception:
+        pass
+    try:
 
-    if match_ratio > cp.stage_3_config_dict["nlp_upper_tresh"]:
-        return pHISHING
-    elif match_ratio > cp.stage_3_config_dict["nlp_lower_tresh"]:
-        return sUS
-    else:
-        return lEGIT
+        inline_scripts = soup.find_all("script", src=False)
+        for script in inline_scripts:
+            content = (script.string or "").lower()
+
+            if not content:
+                continue
+
+            if re.search(r"event\s*\.\s*button\s*==\s*2", content) or "contextmenu" in content:
+                suspicious_script_count +=1
+    except Exception:
+        pass
+    return suspicious_script_count,contextmenu_tags_count
 
 
 
-def find_html_features(html, url: str, feature_type: str):
+
+
+
+def find_html_features_separated(soup: BeautifulSoup, url: str, feature_type: str, driver: webdriver):
     domain = normalize_domain(url)
-    str_html = str(html)
     elements = []
+
     if feature_type == "favicon_check":
-        elements = element_extraction_from_html(html, tag="link", attribute="href")
+        elements = element_extraction_from_html(soup, tag="link", attribute="href")
         return favicon_check(elements, domain)
+
     elif feature_type == "url_anchor":
-        elements = element_extraction_from_html(html, tag="a", attribute="href")
+        elements = element_extraction_from_html(soup, tag="a", attribute="href")
         return extract_url_of_anchor_feature(elements, domain)
+
     elif feature_type == "links_in_tags":
-        elements += element_extraction_from_html(html, tag="meta", attribute="content")
-        elements += element_extraction_from_html(html, tag="script", attribute="src")
-        elements += element_extraction_from_html(html, tag="link", attribute="href")
-        return link_count_in_html(elements, domain)
+        meta_elements = element_extraction_from_html(soup, tag="meta", attribute="content")
+        script_elements = element_extraction_from_html(soup, tag="script", attribute="src")
+        link_elements = element_extraction_from_html(soup, tag="link", attribute="href")
+        extern_meta, sus_words_meta = count_external_meta_content(meta_elements, domain)
+        extern_script, sus_words_script = count_external_script_src(script_elements, domain)
+        extern_links = count_external_link_href(link_elements, domain)
+        total_extern = link_count_in_html(extern_links, extern_meta, extern_script)
+        return extern_meta, sus_words_meta, extern_script, sus_words_script, extern_links, total_extern
+
     elif feature_type == "request_sources_from_diff_url":
         for tag in ["img", "source", "audio", "video", "embed", "iframe"]:
-            elements += element_extraction_from_html(html, tag=tag, attribute="src")
+            elements += element_extraction_from_html(soup, tag=tag, attribute="src")
         return extract_request_url_feature(elements, domain)
-    elif feature_type == "sfh":
-        elements = element_extraction_from_html(html, tag="form", attribute="action")
-        elements += element_extraction_from_html(html, tag="form")
-        return extract_sfh_feature(elements, domain)
-    elif feature_type == "iframe":
-        elements += element_extraction_from_html(html, tag="iframe")
-        return extract_iframe_feature_src(elements, domain)
-    elif feature_type == "suspicious_js":
-        return detect_suspicious_js_behavior(html, domain)
-    elif feature_type == "nlp_text":
-        return nlp_based_phishing_text_check(html)
 
-    return
+    elif feature_type == "sfh":
+        elements = element_extraction_from_html(soup, tag="form")
+        return extract_sfh_feature(elements, domain)
+
+    elif feature_type == "iframe":
+        iframe_elements = element_extraction_from_html(soup, tag="iframe")
+        src_features = extract_iframe_feature_src(iframe_elements, domain)
+        srcdoc_features = extract_iframe_feature_srcdoc(iframe_elements, domain)
+        total_iframes = total_iframe_src_n_doc(src_features[0], srcdoc_features[0])
+        return src_features + srcdoc_features + (total_iframes,)
+
+    elif feature_type == "suspicious_js":
+        return detect_suspicious_js_behavior(soup, domain)
+
+    elif feature_type == "nlp_text":
+        return (nlp_based_phishing_text_check(soup),)
+
+    elif feature_type == "analyze_textual_tags":
+        meta_elements = element_extraction_from_html(soup, tag="meta", attribute="content")
+        script_elements = element_extraction_from_html(soup, tag="script", attribute="src")
+        count_meta, _ = count_external_meta_content(meta_elements, domain)
+        count_script, _ = count_external_script_src(script_elements, domain)
+        return (analyze_textual_tags(count_script, count_meta),)
+
+    elif feature_type == "detect_dynamic_script_injection":
+        return (detect_dynamic_script_injection(driver),)
+
+    elif feature_type == "detect_auto_redirect":
+        return detect_auto_redirect(driver, domain)
+
+    elif feature_type == "check_login_form_visibility":
+        return (check_login_form_visibility(driver),)
+
+    elif feature_type == "detect_onmouseover_in_dom":
+        return detect_onmouseover_in_dom(soup)
+
+    elif feature_type == "detect_right_click_block":
+        return detect_right_click_block(soup)
+
+    return ()
+
+def test_headless_browser_firefox(url: str):
+    if not url.startswith(('http://', 'https://')):
+        url = 'http://' + url
+
+    ffx_options = Options()
+    ffx_options.add_argument("--headless")
+    driver = webdriver.Firefox(options=ffx_options)
+    try:
+        driver.get(url)
+        html = driver.page_source
+        return html, driver
+    except Exception:
+        return None, None
+
+def extract_stage3_features_debug_separated(input_csv_path, output_csv_path):
+    df = pd.read_csv(input_csv_path)
+    total = len(df)
+    results = []
+
+    for index, row in df.iterrows():
+        url = row['URL']
+        label = row.get('label', 0)
+        print(f"\n🔍 [{index+1}/{total}] Processing URL: {url}")
+
+        html, driver = test_headless_browser_firefox(url)
+        if html is None or driver is None:
+            logging.error(f"[ERROR] Failed to load page: {url}")
+            continue
+
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+            features = [url]
+
+            feature_types = [
+                "favicon_check",
+                "url_anchor",
+                "links_in_tags",
+                "request_sources_from_diff_url",
+                "sfh",
+                "iframe",
+                "suspicious_js",
+                "nlp_text",
+                "analyze_textual_tags",
+                "detect_dynamic_script_injection",
+                "detect_auto_redirect",
+                "check_login_form_visibility",
+                "detect_onmouseover_in_dom",
+                "detect_right_click_block"
+            ]
+
+            for feature_type in feature_types:
+                try:
+                    result = find_html_features_separated(soup, url, feature_type, driver)
+                    features.extend(result)
+                except Exception as e:
+                    logging.error(f"[ERROR] {feature_type} failed for {url} → {e}")
+                    features.extend([-999])
+
+            features.append(label)
+            results.append(features)
+        finally:
+            driver.quit()
+
+    headers = [
+        "url",
+        # favicon
+        "has_icon", "favicon_diff_domain", "favicon_invalid_ext",
+        # anchor
+        "anchor_tags_present", "anchor_empty_href", "anchor_diff_domain",
+        # links
+        "meta_external", "meta_sus_words", "script_external", "script_sus_words", "link_external", "total_external",
+        # request sources
+        "total_resources", "external_resources",
+        # sfh
+        "sfh_total_forms", "sfh_blank_action", "sfh_diff_domain", "sfh_password_inputs", "sfh_suspicious_inputs",
+        # iframe src
+        "iframe_src_count", "iframe_src_hidden", "iframe_src_size", "iframe_src_diff_domain", "iframe_src_no_sandbox",
+        # iframe srcdoc
+        "iframe_srcdoc_count", "iframe_srcdoc_hidden", "iframe_srcdoc_scripts", "iframe_srcdoc_sus_words",
+        # total iframes
+        "total_iframes",
+        # suspicious_js
+        "inline_scripts", "high_risk_patterns", "medium_risk_patterns", "low_risk_patterns", "sus_js_diff_domain",
+        # nlp
+        "nlp_suspicious_words",
+        # analyze_textual_tags
+        "analyze_textual_sus_words",
+        # dynamic script injection
+        "dynamic_scripts_count",
+        # auto redirect
+        "meta_refresh_redirect", "window_location_redirect", "final_url_diff_domain",
+        # hidden login forms
+        "hidden_forms_count",
+        # onmouseover
+        "onmouseover_scripts", "onmouseover_tags",
+        # right click block
+        "right_click_scripts", "right_click_tags",
+        # label
+        "label"
+    ]
+
+    pd.DataFrame(results, columns=headers).to_csv(output_csv_path, index=False)
+    logging.info(f"\n✅ Finished. CSV saved to: {output_csv_path}")
+
+if __name__ == "__main__":
+    PROJECT_ROOT = get_project_root()
+    input_csv_path = os.path.join(PROJECT_ROOT, "data","checked_alive_raw_data" ,"safe_urls.csv")
+    output_csv_path = os.path.join(PROJECT_ROOT,"data", "label_data","stage3_output","separated_data_output","legit","separated_safe_urls_output.csv")
+
+    extract_stage3_features_debug_separated(input_csv_path, output_csv_path)

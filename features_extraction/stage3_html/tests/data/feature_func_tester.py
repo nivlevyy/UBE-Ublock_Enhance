@@ -438,8 +438,6 @@ def run_dynamic_script_injection_tests():
 #     print("Pass:", [r == e for r, e in zip(results, dynamic_script_expected_outputs)])
 
 
-
-
 ##############################################
 # Detect Auto Redirect Feature Test Cases    #
 ##############################################
@@ -447,11 +445,14 @@ def run_dynamic_script_injection_tests():
 AUTOREDIRECT_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "autoredirect_test")
 
 autoredirect_html_files = [
-    "test_redirect_legit.html",         # אין הפניה ➔ LEGIT (1)
-    "test_redirect_phish.html"           # יש הפניה ➔ PHISHING (-1)
+    "test_redirect_legit.html",              # Legit ➔ 1
+    "test_redirect_phish_meta.html",          # Meta Refresh ➔ Phishing (-1)
+    "test_redirect_phish_window_href.html",   # window.location.href ➔ Phishing (-1)
+    "test_redirect_phish_location_href.html", # location.href ➔ Phishing (-1)
+    "test_redirect_phish_window_replace.html" # window.location.replace ➔ Phishing (-1)
 ]
 
-autoredirect_expected_outputs = [1, -1]
+autoredirect_expected_outputs = [1, -1, -1, -1, -1]
 
 def run_autoredirect_tests():
     results = []
@@ -462,15 +463,92 @@ def run_autoredirect_tests():
     try:
         for file in autoredirect_html_files:
             path = os.path.join(AUTOREDIRECT_HTML_DIR, file)
-            driver.get(f"file://{path}")  # טוען את קובץ ה־HTML מהמערכת
-            base_domain = normalize_domain(f"file://{path}")  # במקרה הזה הדומיין יהיה 'file'
+            driver.get(f"file://{path}")
+            base_domain = normalize_domain(f"file://{path}")
             result = fe.detect_autoredirect(driver, base_domain)
             results.append(result)
     finally:
         driver.quit()
     return results
 
-if __name__ == "__main__":
-    results = run_autoredirect_tests()
-    print("Results:", results)
-    print("Pass:", [r == e for r, e in zip(results, autoredirect_expected_outputs)])
+# if __name__ == "__main__":
+#     results = run_autoredirect_tests()
+#     print("Results:", results)
+#     print("Pass:", [r == e for r, e in zip(results, autoredirect_expected_outputs)])
+#
+
+
+##############################################
+# Check Login Form Visibility Test Cases    #
+##############################################
+
+LOGIN_FORM_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "login_form_visibility_test")
+
+login_form_html_files = [
+    "test_login_form_legit.html",            # טופס תקין ➔ LEGIT (1)
+    "test_login_form_display_none.html",      # טופס עם display:none ➔ PHISHING (-1)
+    "test_login_form_visibility_hidden.html", # טופס עם visibility:hidden ➔ PHISHING (-1)
+    "test_login_form_zero_size.html"          # טופס בגודל 0x0 ➔ PHISHING (-1)
+]
+
+login_form_expected_outputs = [1, -1, -1, -1]
+
+def run_login_form_visibility_tests():
+    results = []
+    ffx_options = Options()
+    ffx_options.add_argument("--headless")
+    driver = webdriver.Firefox(options=ffx_options)
+
+    try:
+        for file in login_form_html_files:
+            path = os.path.join(LOGIN_FORM_HTML_DIR, file)
+            driver.get(f"file:///{path}")
+            result = fe.check_login_form_visibility(driver)
+            results.append(result)
+    finally:
+        driver.quit()
+    return results
+
+# if __name__ == "__main__":
+#     results = run_login_form_visibility_tests()
+#     print("Results:", results)
+#     print("Pass:", [r == e for r, e in zip(results, login_form_expected_outputs)])
+#
+
+
+##############################################
+# Detect Dynamic Script Injection Test Cases #
+##############################################
+
+DYNAMIC_SCRIPT_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "dynamic_script_injection_test")
+
+dynamic_script_html_files = [
+    "test_dynamic_script_legit.html",         # 2 סקריפטים ➔ LEGIT (1)
+    "test_dynamic_script_suspicious.html",     # 6 סקריפטים ➔ SUSPICIOUS (0)
+    "test_dynamic_script_phishing.html"        # 12 סקריפטים ➔ PHISHING (-1)
+]
+
+dynamic_script_expected_outputs = [1, 0, -1]
+
+def run_dynamic_script_injection_tests():
+    results = []
+    ffx_options = Options()
+    ffx_options.add_argument("--headless")
+    driver = webdriver.Firefox(options=ffx_options)
+
+    try:
+        for file in dynamic_script_html_files:
+            path = os.path.join(DYNAMIC_SCRIPT_HTML_DIR, file)
+            driver.get(f"file:///{path}")
+            result = fe.detect_dynamic_script_injection(driver)
+            results.append(result)
+    finally:
+        driver.quit()
+    return results
+
+# if __name__ == "__main__":
+#     results = run_dynamic_script_injection_tests()
+#     print("Results:", results)
+#     print("Pass:", [r == e for r, e in zip(results, dynamic_script_expected_outputs)])
+
+
