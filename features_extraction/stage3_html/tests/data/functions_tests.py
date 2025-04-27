@@ -24,9 +24,8 @@ ONMOUSEOVER_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3
 ANALYZE_TEXT_TAGS_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "analyze_textual_tags_test")
 DYNAMIC_SCRIPT_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "dynamic_script_test")
 AUTOREDIRECT_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "autoredirect_test")
-
-
-
+LOGIN_FORM_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "login_form_visibility_test")
+ANALYZE_TEXTUAL_TAGS_HTML_DIR = os.path.join(PROJECT_ROOT, "features_extraction", "stage3_html", "tests", "data", "analyze_textual_tags_test")
 
 
 
@@ -602,14 +601,164 @@ autoredirect_test_cases = {
 </body>
 </html>
 """,
-    "test_redirect_phish.html": """
+    "test_redirect_phish_meta.html": """
 <!DOCTYPE html>
 <html>
 <head>
-    <meta http-equiv="refresh" content="0; URL='https://phishing-site.bad'"/>
+    <meta http-equiv="refresh" content="0; URL='https://example.com"/>
 </head>
 <body>
-    <h1>Redirecting...</h1>
+    <h1>Redirecting by Meta Refresh</h1>
+</body>
+</html>
+""",
+    "test_redirect_phish_window_href.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        window.onload = function() {
+            window.location.href = "https://example.com"";
+        }
+    </script>
+</head>
+<body>
+    <h1>Redirect via window.location.href</h1>
+</body>
+</html>
+""",
+    "test_redirect_phish_location_href.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        window.onload = function() {
+            location.href = "https://example.com"";
+        }
+    </script>
+</head>
+<body>
+    <h1>Redirect via location.href</h1>
+</body>
+</html>
+""",
+    "test_redirect_phish_window_replace.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        window.onload = function() {
+            window.location.replace("https://example.com"");
+        }
+    </script>
+</head>
+<body>
+    <h1>Redirect via window.location.replace</h1>
+</body>
+</html>
+"""
+}
+login_form_visibility_test_cases = {
+    "test_login_form_legit.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Legit Form</title>
+</head>
+<body>
+    <form action="/submit">
+        <input type="text" name="username">
+        <input type="password" name="password">
+        <input type="submit">
+    </form>
+</body>
+</html>
+""",
+    "test_login_form_display_none.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hidden Form Display None</title>
+</head>
+<body>
+    <form action="/submit" style="display:none;">
+        <input type="text" name="username">
+        <input type="password" name="password">
+        <input type="submit">
+    </form>
+</body>
+</html>
+""",
+    "test_login_form_visibility_hidden.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hidden Form Visibility Hidden</title>
+</head>
+<body>
+    <form action="/submit" style="visibility:hidden;">
+        <input type="text" name="username">
+        <input type="password" name="password">
+        <input type="submit">
+    </form>
+</body>
+</html>
+""",
+    "test_login_form_zero_size.html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hidden Form Size Zero</title>
+</head>
+<body>
+    <form action="/submit" style="width:0;height:0;">
+        <input type="text" name="username">
+        <input type="password" name="password">
+        <input type="submit">
+    </form>
+</body>
+</html>
+"""
+}
+dynamic_script_injection_test_cases = {
+    "test_dynamic_script_legit.html": """
+<!DOCTYPE html>
+<html>
+<head>
+<script>console.log("Script 1");</script>
+<script>console.log("Script 2");</script>
+</head>
+<body>
+<h1>Legitimate Page</h1>
+</body>
+</html>
+""",
+    "test_dynamic_script_suspicious.html": """
+<!DOCTYPE html>
+<html>
+<head>
+<script>console.log("Script 1");</script>
+<script>console.log("Script 2");</script>
+<script>console.log("Script 3");</script>
+<script>console.log("Script 4");</script>
+<script>console.log("Script 5");</script>
+<script>console.log("Script 6");</script>
+</head>
+<body>
+<h1>Suspicious Page</h1>
+</body>
+</html>
+""",
+    "test_dynamic_script_phishing.html": """
+<!DOCTYPE html>
+<html>
+<head>
+""" +
+"\n".join(f"<script>console.log('Script {i}');</script>" for i in range(1, 13)) +
+"""
+</head>
+<body>
+<h1>Phishing Page</h1>
 </body>
 </html>
 """
@@ -620,13 +769,10 @@ autoredirect_test_cases = {
 
 
 
-
-
-
 if __name__ == "__main__":
-        os.makedirs(AUTOREDIRECT_HTML_DIR, exist_ok=True)
-        for filename, content in autoredirect_test_cases.items():
-            path = os.path.join(AUTOREDIRECT_HTML_DIR, filename)
+        os.makedirs(ANALYZE_TEXTUAL_TAGS_HTML_DIR, exist_ok=True)
+        for filename, content in analyze_textual_tags_test_cases.items():
+            path = os.path.join(ANALYZE_TEXTUAL_TAGS_HTML_DIR, filename)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(content.strip())
 
