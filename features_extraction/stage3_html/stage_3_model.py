@@ -566,8 +566,9 @@ def test_headless_browser_firefox(url: str):
         ffx_options.add_argument("--headless")
         driver = webdriver.Firefox(options=ffx_options)
         try:
-            #driver.get(url)
-          #  WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+
+            driver.get(url)
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
             print( driver.page_source)
             html = driver.page_source
 
@@ -643,7 +644,7 @@ def extract_stage3_features_debug(input_csv_path, output_csv_path):
 if __name__ == "__main__":
     PROJECT_ROOT = get_project_root()
     input_csv_path = os.path.join(PROJECT_ROOT,"data","checked_alive_raw_data", "safe_urls.csv")
-    output_csv_path = os.path.join(PROJECT_ROOT,"data", "label_data","stage3_output","phis_sus_legit_tag_output","legit","legit_non_separated.csv")
+    output_csv_path = os.path.join(PROJECT_ROOT,"data", "label_data","stage3_output","phis_sus_legit_tag_output","legit","safe_non_separated.csv")
 
     # Now call the debug function you defined earlier
     extract_stage3_features_debug(input_csv_path, output_csv_path)
