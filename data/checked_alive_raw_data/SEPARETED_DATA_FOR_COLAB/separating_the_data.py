@@ -14,7 +14,7 @@ output_root=os.path.join(PROJECT_ROOT,"data","checked_alive_raw_data","SEPARETED
 
 df = pd.read_csv(input_root, sep=",", quotechar='"')
 
-chunk_size = 5000
+chunk_size = 2600
 
 num_files = math.ceil(len(df) / chunk_size)
 

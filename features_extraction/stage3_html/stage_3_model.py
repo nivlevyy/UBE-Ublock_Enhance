@@ -1,5 +1,5 @@
-from re import error
 import os
+
 from features_extraction.config_models import  config_parmas as cp
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -9,7 +9,7 @@ import re
 import pandas as pd
 from selenium.webdriver.support.ui import WebDriverWait
 import logging
-import time
+
 SUSPICIOUS_WORDS_REGEX = re.compile(
     r"(log[\s\-]?in|sign[\s\-]?in|auth|user(name)?|email|phone|account|"
     r"credential|password|passcode|pin|security[\s\-]?code|credit[\s\-]?card|cvv|expiry|iban|bank)",
@@ -588,7 +588,7 @@ def extract_stage3_features_debug(input_csv_path, output_csv_path):
          for index, row in df.iterrows():
              url = row['URL']
              label = row.get('label', 0)
-             print(f"\n🔍 [{index+1}/{total}] Processing URL: \033[96m{url}\033[0m")
+             print(f"\n🔍 [{int(index)+1}/{total}] Processing URL: \033[96m{url}\033[0m")
 
              html,driver= test_headless_browser_firefox(url)
              if html is None or driver is None:
