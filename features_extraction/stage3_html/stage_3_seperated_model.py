@@ -10,7 +10,7 @@ import pandas as pd
 import os
 import logging
 from multiprocessing import Process
-
+import requests
 
 def get_project_root():
     return os.path.abspath(
@@ -615,7 +615,7 @@ def detect_right_click_block(soup: BeautifulSoup) -> tuple:
 
 
 
-def find_html_features_separated(soup: BeautifulSoup, url: str, feature_type: str, driver: webdriver):
+def find_html_features_separated(soup: BeautifulSoup, url: str, feature_type: str, driver: webdriver): # need to add back as arument , driver: webdriver
     domain = normalize_domain(url)
     elements = []
 
@@ -683,68 +683,90 @@ def find_html_features_separated(soup: BeautifulSoup, url: str, feature_type: st
 
     return ()
 
-def test_headless_browser_firefox(url: str):
-    if not url.startswith(('http://', 'https://')):
-        url = 'http://' + url
 
-    ffx_options = Options()
-    ffx_options.add_argument("--headless")
-    driver = webdriver.Firefox(options=ffx_options)
-    try:
-        driver.get(url)
-        html = driver.page_source
-        return html, driver
-    except Exception:
-        return None, None
+def safe_get_driver():
+        options = Options()
+        options.add_argument("--headless")
+        return webdriver.Firefox(options=options)
 
 def extract_stage3_features_debug_separated(input_csv_path, output_csv_path, pid):
+
     df = pd.read_csv(input_csv_path)
     total = len(df)
     results = []
+
+    driver = safe_get_driver()
 
     for index, row in df.iterrows():
         url = row['URL']
         label = row.get('label', 0)
         print(f"\nproc num: {pid}🔍 [{index+1}/{total}] Processing URL: {url}")
 
-        html, driver = test_headless_browser_firefox(url)
-        if html is None or driver is None:
-            logging.error(f"[ERROR] Failed to load page: {url}")
-            continue
+        if not url.startswith(("http://", "https://")):
+            url = "http://" + url
 
-        try:
-            soup = BeautifulSoup(html, "html.parser")
-            features = [url]
+        success = False
 
-            feature_types = [
-                "favicon_check",
-                "url_anchor",
-                "links_in_tags",
-                "request_sources_from_diff_url",
-                "sfh",
-                "iframe",
-                "suspicious_js",
-                "nlp_text",
-                "analyze_textual_tags",
-                "detect_dynamic_script_injection",
-                "detect_auto_redirect",
-                "check_login_form_visibility",
-                "detect_onmouseover_in_dom",
-                "detect_right_click_block"
-            ]
+        for trys in range(2):
+            try:
+                driver.get(url)
+                WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                html = driver.page_source
+                # html = requests.get(url, timeout=3).text
+                if not html:
+                    raise Exception("Empty page source")
 
-            for feature_type in feature_types:
+                soup = BeautifulSoup(html, "html.parser")
+                features = [url]
+
+                feature_types = [
+                    "favicon_check",
+                    "url_anchor",
+                    "links_in_tags",
+                    "request_sources_from_diff_url",
+                    "sfh",
+                    "iframe",
+                    "suspicious_js",
+                    "nlp_text",
+                    "analyze_textual_tags",
+                    "detect_dynamic_script_injection",
+                    "detect_auto_redirect",
+                    "check_login_form_visibility",
+                    "detect_onmouseover_in_dom",
+                    "detect_right_click_block"
+                ]
+
+                for feature_type in feature_types:
+                    try:
+                        result = find_html_features_separated(soup, url, feature_type,driver) #need to add back the driver to this function
+                        features.extend(result)
+                    except Exception as e:
+                        logging.error(f"[ERROR] {feature_type} failed for {url} → {e}")
+                        features.extend([-999])
+
+                features.append(label)
+                results.append(features)
+                success = True
+                break
+
+            except Exception as e:
+                logging.error(f"[ERROR] Failed to process URL: {url} → {e}")
+                logging.warning(f"[RECOVERY] Restarting browser after crash at index {index}")
                 try:
-                    result = find_html_features_separated(soup, url, feature_type, driver)
-                    features.extend(result)
-                except Exception as e:
-                    logging.error(f"[ERROR] {feature_type} failed for {url} → {e}")
-                    features.extend([-999])
+                    driver.quit()
+                except:
+                    pass
+                driver = safe_get_driver()
+                continue
 
-            features.append(label)
-            results.append(features)
-        finally:
-            driver.quit()
+        if not success:
+            logging.warning(f"[SKIP] URL failed after 2 attempts: {url}")
+
+
+    try:
+        driver.quit()
+    except:
+        pass
 
     headers = [
         "url",
@@ -771,11 +793,11 @@ def extract_stage3_features_debug_separated(input_csv_path, output_csv_path, pid
         # analyze_textual_tags
         "analyze_textual_sus_words",
         # dynamic script injection
-        "dynamic_scripts_count",
+       "dynamic_scripts_count",
         # auto redirect
-        "meta_refresh_redirect", "window_location_redirect", "final_url_diff_domain",
+       "meta_refresh_redirect", "window_location_redirect", "final_url_diff_domain",
         # hidden login forms
-        "hidden_forms_count",
+       "hidden_forms_count",
         # onmouseover
         "onmouseover_scripts", "onmouseover_tags",
         # right click block
@@ -801,18 +823,19 @@ def process_single_file(input_csv_path, output_csv_path,pid):
 if __name__ == "__main__":
     PROJECT_ROOT = get_project_root()
     input_csv_path = os.path.join(PROJECT_ROOT, "data", "checked_alive_raw_data", "SEPARETED_DATA_FOR_COLAB", "LEGIT")
-    output_csv_path = os.path.join(PROJECT_ROOT, "data", "label_data", "stage3_output", "separated_data_output", "legit")
+    output_csv_path = os.path.join(PROJECT_ROOT, "data", "label_data", "stage3_output", "separated_data_output", "legit","full")
 
     files = [
         (os.path.join(input_csv_path, "safe_urls_part_1.csv"),os.path.join(output_csv_path, "safe_urls_part_1_output.csv"), "1"),
         (os.path.join(input_csv_path, "safe_urls_part_2.csv"),os.path.join(output_csv_path, "safe_urls_part_2_output.csv"), "2"),
         (os.path.join(input_csv_path, "safe_urls_part_3.csv"),os.path.join(output_csv_path, "safe_urls_part_3_output.csv"), "3"),
         (os.path.join(input_csv_path, "safe_urls_part_4.csv"),os.path.join(output_csv_path, "safe_urls_part_4_output.csv"), "4"),
-        (os.path.join(input_csv_path, "safe_urls_part_5.csv"),os.path.join(output_csv_path, "safe_urls_part_5_output.csv"), "5"),
-        (os.path.join(input_csv_path, "safe_urls_part_6.csv"),os.path.join(output_csv_path, "safe_urls_part_6_output.csv"), "6"),
-        (os.path.join(input_csv_path, "safe_urls_part_7.csv"),os.path.join(output_csv_path, "safe_urls_part_7_output.csv"), "7"),
-        (os.path.join(input_csv_path, "safe_urls_part_8.csv"),os.path.join(output_csv_path, "safe_urls_part_8_output.csv"), "8"),
+        # (os.path.join(input_csv_path, "safe_urls_part_5.csv"),os.path.join(output_csv_path, "safe_urls_part_5_output.csv"), "5"),
+        # (os.path.join(input_csv_path, "safe_urls_part_6.csv"),os.path.join(output_csv_path, "safe_urls_part_6_output.csv"), "6"),
+        # (os.path.join(input_csv_path, "safe_urls_part_7.csv"),os.path.join(output_csv_path, "safe_urls_part_7_output.csv"), "7"),
+        # (os.path.join(input_csv_path, "safe_urls_part_8.csv"),os.path.join(output_csv_path, "safe_urls_part_8_output.csv"), "8")
     ]
+
 
     processes = []
 
