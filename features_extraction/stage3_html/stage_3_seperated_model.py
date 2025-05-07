@@ -826,10 +826,10 @@ if __name__ == "__main__":
     output_csv_path = os.path.join(PROJECT_ROOT, "data", "label_data", "stage3_output", "separated_data_output", "legit","full")
 
     files = [
-        (os.path.join(input_csv_path, "safe_urls_part_1.csv"),os.path.join(output_csv_path, "safe_urls_part_1_output.csv"), "1"),
-        (os.path.join(input_csv_path, "safe_urls_part_2.csv"),os.path.join(output_csv_path, "safe_urls_part_2_output.csv"), "2"),
-        (os.path.join(input_csv_path, "safe_urls_part_3.csv"),os.path.join(output_csv_path, "safe_urls_part_3_output.csv"), "3"),
-        (os.path.join(input_csv_path, "safe_urls_part_4.csv"),os.path.join(output_csv_path, "safe_urls_part_4_output.csv"), "4"),
+        (os.path.join(input_csv_path, "safe_urls_part_1.csv"),os.path.join(output_csv_path, "safe_urls_part_1_output_full.csv"), "1"),
+        (os.path.join(input_csv_path, "safe_urls_part_2.csv"),os.path.join(output_csv_path, "safe_urls_part_2_output_full.csv"), "2"),
+        (os.path.join(input_csv_path, "safe_urls_part_3.csv"),os.path.join(output_csv_path, "safe_urls_part_3_output_full.csv"), "3"),
+        (os.path.join(input_csv_path, "safe_urls_part_4.csv"),os.path.join(output_csv_path, "safe_urls_part_4_output_full.csv"), "4"),
         # (os.path.join(input_csv_path, "safe_urls_part_5.csv"),os.path.join(output_csv_path, "safe_urls_part_5_output.csv"), "5"),
         # (os.path.join(input_csv_path, "safe_urls_part_6.csv"),os.path.join(output_csv_path, "safe_urls_part_6_output.csv"), "6"),
         # (os.path.join(input_csv_path, "safe_urls_part_7.csv"),os.path.join(output_csv_path, "safe_urls_part_7_output.csv"), "7"),
