@@ -1,19 +1,16 @@
 import pandas as pd
+import whois as wi
+from datetime import datetime
+import socket
 import ssl
+import re
 import requests
 from urllib.parse import urlparse
+import time
+import random
 from tldextract import extract
-import os
-import socket
-import re
-from datetime import datetime
+from tldextract.tldextract import ExtractResult
 
-def get_project_root():
-    return os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-
-PROJECT_ROOT = get_project_root()
-STAGE_2_OUTPUT_PATH= os.path.join(PROJECT_ROOT, "data","label_data","stage2_output")
 
 def extract_urls_from_csv(csv_file_path):
     url_column_name = 'url'
@@ -64,12 +61,11 @@ def raw_whois_query(domain, server):
     except Exception as e:
         return f"ERROR: {e}"
 
-
 def get_domain_age_from_raw_whois(domain):
     try:
         domain = get_final_hostname(domain)['final_url']
         extracted_result = extract(domain)
-        domain = extracted_result.registered_domain
+        domain = extracted_result.top_domain_under_public_suffix
         tld = extracted_result.suffix
         whois_server = get_whois_server_for_tld(tld)
         if not whois_server:
@@ -109,6 +105,8 @@ def IsAgeMalicous(age_days):
         return 0
 
 def ssl_certificate_details(hostname):
+    redirect_result = get_final_hostname(hostname)
+    hostname = redirect_result['hostname']
     ctx = ssl.create_default_context()
     try:
         with ctx.wrap_socket(socket.socket(), server_hostname=hostname) as s:
@@ -165,7 +163,6 @@ def get_final_hostname(url):
         "used_https": final_url.startswith('https://')
     }
 
-
 def check_url_ssl_with_redirect(url):
     redirect_result = get_final_hostname(url)
 
@@ -182,7 +179,6 @@ def check_url_ssl_with_redirect(url):
         "ssl_details": ssl_result
     }
     return combined_result
-
 
 def check_dns_reputation(url, api_key):
     result = get_final_hostname(url)
@@ -216,9 +212,46 @@ def check_dns_reputation(url, api_key):
         return {"error": str(e)}
 
 
-API_KEY_VIRUSTOTAL = '3c4008ba723f3b1e4a360506a8f79585233c1e540bf475b2099b075d41703868'
-input_csv = "put_updated_phish_csv_path_here!!!!!"
-output_csv = STAGE_2_OUTPUT_PATH
+Google_API_KEY = "AIzaSyB4JIYGtS0GKVGIKu8DfHilowaSQSBHkhE"
+
+def check_google_safe_browsing(url_to_check):
+    safe_browsing_url = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
+
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "client": {
+            "clientId": "yourcompanyname",
+            "clientVersion": "1.5.2"
+        },
+        "threatInfo": {
+            "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "POTENTIALLY_HARMFUL_APPLICATION", "UNWANTED_SOFTWARE"],
+            "platformTypes": ["ANY_PLATFORM"],
+            "threatEntryTypes": ["URL"],
+            "threatEntries": [
+                {"url": url_to_check}
+            ]
+        }
+    }
+
+    params = {
+        "key": Google_API_KEY
+    }
+
+    try:
+        response = requests.post(safe_browsing_url, headers=headers, params=params, json=payload, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if "matches" in data:
+                return {"unsafe": True, "details": data["matches"]}
+            else:
+                return {"unsafe": False}
+        else:
+            return {"error": f"API Error: {response.status_code} - {response.text}"}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def build_detailed_site_csv(input_csv_path, output_csv_path, url_column='URL'):
@@ -228,7 +261,7 @@ def build_detailed_site_csv(input_csv_path, output_csv_path, url_column='URL'):
     counter = 0
     for idx, row in df.iterrows():
         counter += 1
-        if counter == 500:
+        if counter == 60:
             break
         domain = row[url_column]
 
@@ -247,6 +280,9 @@ def build_detailed_site_csv(input_csv_path, output_csv_path, url_column='URL'):
         except Exception as e:
             has_ssl = False
             valid_ssl = False
+
+        #Google Safe Browse Check
+        Google_Res = check_google_safe_browsing(domain)
 
         # DNS Reputation Check
         dns_info = check_dns_reputation(domain, API_KEY_VIRUSTOTAL)
@@ -273,12 +309,19 @@ def build_detailed_site_csv(input_csv_path, output_csv_path, url_column='URL'):
             'malicious': malicious,
             'suspicious': suspicious,
             'undetected': undetected,
-            'harmless': harmless
+            'harmless': harmless,
+            'google_SafeBrowseRes': Google_Res
         })
 
     # Create DataFrame and save to new CSV
     detailed_df = pd.DataFrame(results)
     detailed_df.to_csv(output_csv_path, index=False)
 
+API_KEY_VIRUSTOTAL = '3c4008ba723f3b1e4a360506a8f79585233c1e540bf475b2099b075d41703868'
+input_csv = "D:\safe_urls - 50.csv"
+output_csv = "D:\safe_urls_AfterWork - 50.csv"
 
 build_detailed_site_csv(input_csv, output_csv)
+
+
+
