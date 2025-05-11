@@ -805,7 +805,6 @@ def extract_stage3_features_debug_separated(input_csv_path, output_csv_path, pid
         # label
         "label"
     ]
-
     pd.DataFrame(results, columns=headers).to_csv(output_csv_path, index=False)
     logging.info(f"\n✅ Finished. CSV saved to: {output_csv_path}")
 
