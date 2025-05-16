@@ -5,6 +5,7 @@ import  requests
 url="https://google.com"
 html = requests.get(url, timeout=3).text
 print(html)
+
 # def get_project_root():
 #     return os.path.abspath(
 #         os.path.join(os.path.dirname(__file__),"..","..", "..")

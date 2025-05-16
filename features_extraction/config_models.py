@@ -113,3 +113,5 @@ class config_parmas :
     @staticmethod
     def get_suspicious_keywords():
         return ["login", "signin", "verify", "auth", "password", "2fa", "secure"]
+
+
