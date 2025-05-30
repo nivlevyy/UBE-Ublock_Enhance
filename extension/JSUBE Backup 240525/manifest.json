@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "uBlock Enhanced",
+  "version": "1.0",
+  "description": "Enhances uBlock Origin's capabilities by adding a specially trained AI model that can detect phishing URLs",
+
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking"
+  ],
+
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"],
+    "type": "module"
+  },
+
+  "action": {
+    "default_icon": {
+      "16": "icons/ubeicon16toolbar.png",
+      "32": "icons/ubeicon32toolbar.png"
+    },
+    "default_title": "UBE",
+    "default_popup": "popup.html"
+  }
+}

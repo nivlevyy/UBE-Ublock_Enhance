@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "srcAddon",
+  "version": "1.0",
+  "description": "Adds a red border to all webpages",
+  "content_scripts":
+  [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/UBE_stage3_bundle.js"]
+    }
+  ]
+}
+
+
