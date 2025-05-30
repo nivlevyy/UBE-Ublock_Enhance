@@ -728,9 +728,9 @@ def extract_stage3_features_debug_separated(input_csv_path, output_csv_path, pid
                     "suspicious_js",
                     "nlp_text",
                     # "analyze_textual_tags",
-                    "detect_scripts_count",
-                    "detect_auto_redirect",
-                    "check_login_form_visibility",
+                    # "detect_scripts_count",
+                    # "detect_auto_redirect",
+                    # "check_login_form_visibility",
                     "detect_onmouseover_in_dom",
                     "detect_right_click_block"
                 ]
@@ -794,7 +794,7 @@ def extract_stage3_features_debug_separated(input_csv_path, output_csv_path, pid
         # dynamic script injection
        "total_scripts","external_script",
         # auto redirect
-       "meta_refresh_redirect", "window_location_redirect", "final_url_diff_domain",
+        # "meta_refresh_redirect", "window_location_redirect", "final_url_diff_domain",
         # hidden login forms
        "hidden_forms_count",
         # onmouseover
